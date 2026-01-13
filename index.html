@@ -14,7 +14,7 @@
             --surface: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
             --accent: #ffffff;
-            --gold: #d4af37;
+            --gold: #d4af37; 
             --teal: #2dd4bf; 
             --text-main: #ffffff; 
             --glass: blur(25px);
@@ -44,7 +44,7 @@
         .overlay.active { opacity: 1; visibility: visible; }
         
         .content-box { width: 100%; max-width: 400px; text-align: center; }
-        .stat-group { margin-bottom: 35px; }
+        .stat-group { margin-bottom: 35px; width: 100%; }
         .stat-label { font-size: 0.7rem; font-weight: 200; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
         .stat-value { font-size: 2.2rem; font-weight: 100; }
 
@@ -52,9 +52,21 @@
         .heat-cell { aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 4px; }
         .heat-cell.active { background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
+        /* Complex Info Grid */
+        .complexity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+        .comp-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 15px; border-radius: 20px; text-align: left; }
+        .comp-label { font-size: 0.55rem; text-transform: uppercase; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-bottom: 5px; display: block; }
+        .comp-val { font-size: 1.1rem; font-weight: 200; color: #fff; }
+
         .pro-badge-main { background: var(--gold); color: #000; font-size: 0.5rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
-        .mode-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .pro-lock-tag { font-size: 0.5rem; letter-spacing: 1px; font-weight: 500; color: var(--gold); border: 1px solid var(--gold); padding: 3px 7px; border-radius: 12px; opacity: 0; transition: 0.3s; }
+        .mode-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        
+        .m-icon { width: 14px; height: 14px; border: 1px solid #fff; flex-shrink: 0; opacity: 0.8; }
+        .m-icon.rect { border-radius: 0; }
+        .m-icon.oval { width: 20px; height: 10px; border-radius: 10px; }
+        .m-icon.circle { border-radius: 50%; }
+
+        .pro-lock-tag { font-size: 0.5rem; letter-spacing: 1px; font-weight: 500; color: var(--gold); border: 1px solid var(--gold); padding: 3px 7px; border-radius: 12px; opacity: 0; transition: 0.3s; margin-left: auto; }
         .mode-card.locked { opacity: 0.5; filter: grayscale(0.2); }
         .mode-card.locked .pro-lock-tag { opacity: 0.9; }
         body.is-pro .pro-lock-tag { display: none !important; }
@@ -95,28 +107,30 @@
         .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.1); }
         .dot.active { background: #ffffff; box-shadow: 0 0 15px #ffffff; }
 
-        .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 25px; backdrop-filter: var(--glass); margin-bottom: 25px; margin-top: 10px; }
-        .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 25px; }
-        .chart-title { font-size: 0.7rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); }
-        .chart-subtitle { font-size: 0.7rem; font-weight: 300; color: var(--teal); }
-        .bar-chart { display: flex; justify-content: space-between; align-items: flex-end; height: 150px; padding-top: 20px; }
-        .bar-group { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; }
-        .bar { width: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; transition: height 0.6s cubic-bezier(0.33, 1, 0.68, 1); }
-        .bar.active { background: var(--teal); box-shadow: 0 0 15px var(--teal); }
-        .bar-label { font-size: 0.6rem; color: rgba(255,255,255,0.6); font-weight: 300; }
-
         .modes-grid { display: grid; gap: 15px; width: 100%; }
         .mode-card { background: var(--surface); border: 1px solid var(--border); padding: 28px; border-radius: 30px; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); backdrop-filter: var(--glass); text-align: left; color: inherit; width: 100%; box-sizing: border-box; }
         .mode-card:hover { border-color: #ffffff; transform: translateY(-3px); }
         .mode-card b { display: block; font-size: 1.1rem; letter-spacing: 2px; font-weight: 200; text-transform: uppercase; }
         .mode-card span { color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 300; line-height: 1.6; }
 
+        .chart-section { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 25px; backdrop-filter: var(--glass); margin-top: 20px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-label-group { display: flex; flex-direction: column; gap: 4px; }
+        .chart-label-group span { font-size: 0.55rem; color: rgba(255,255,255,0.4); letter-spacing: 1px; font-weight: 400; text-transform: uppercase; }
+        .chart-label-group b { font-size: 0.9rem; font-weight: 200; color: var(--teal); }
+        
+        .bar-chart-container { display: flex; align-items: flex-end; justify-content: space-between; height: 100px; padding-top: 10px; position: relative; }
+        .bar-chart-group { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+        .bar-wrapper { width: 100%; height: 80px; display: flex; align-items: flex-end; justify-content: center; }
+        .bar-fill { width: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+        .bar-fill.active { background: var(--teal); box-shadow: 0 0 12px rgba(45, 212, 191, 0.3); }
+        .day-label { font-size: 0.55rem; color: rgba(255,255,255,0.4); text-transform: uppercase; font-weight: 300; }
+
         #game-ui { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 1.5s ease; background: transparent; text-align: center; padding-bottom: 10vh; }
         #game-ui.active { opacity: 1; pointer-events: auto; }
         #instruction { font-size: clamp(4rem, 16vw, 10rem); font-weight: 100; letter-spacing: 20px; text-transform: uppercase; margin-bottom: 10px; color: #ffffff; }
         #sub-instruction { font-size: 2rem; color: #ffffff; letter-spacing: 8px; font-weight: 100; }
         #exit-btn { position: absolute; top: var(--safe-top); right: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); color: white; padding: 10px 22px; border-radius: 40px; cursor: pointer; font-size: 0.7rem; transition: 0.3s; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
-        #session-timer { position: absolute; top: var(--safe-top); left: 25px; color: white; font-weight: 100; font-size: 0.8rem; letter-spacing: 2px; opacity: 0.6; pointer-events: none; }
 
         #session-progress-tracker { position: absolute; bottom: calc(var(--safe-bottom) + 120px); display: flex; gap: 4px; height: 20px; align-items: flex-end; z-index: 205; }
         .progress-bar-tick { width: 3px; height: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; transition: all 0.3s ease; }
@@ -137,21 +151,40 @@
 
     <div id="progress-menu" class="overlay">
         <div class="content-box">
-            <div class="stat-group"><div class="stat-label">Ritual consistency</div><div class="heatmap" id="heatmap"></div></div>
-            <div class="stat-group"><div class="stat-label">Total rituals</div><div id="stat-total" class="progress-value">0</div></div>
+            <div class="stat-group">
+                <div class="stat-label">Consistency Analysis</div>
+                <div class="heatmap" id="heatmap"></div>
+                <div class="complexity-grid">
+                    <div class="comp-card">
+                        <span class="comp-label">Total Rituals</span>
+                        <div id="comp-total" class="comp-val">0</div>
+                    </div>
+                    <div class="comp-card">
+                        <span class="comp-label">Completion Rate</span>
+                        <div id="comp-rate" class="comp-val">0%</div>
+                    </div>
+                    <div class="comp-card">
+                        <span class="comp-label">Best Streak</span>
+                        <div id="comp-best" class="comp-val">0</div>
+                    </div>
+                    <div class="comp-card">
+                        <span class="comp-label">Mindful Mins</span>
+                        <div id="comp-mins" class="comp-val">0</div>
+                    </div>
+                </div>
+            </div>
             
-            <div id="pro-unlock-section" style="margin-top: 20px;">
-                <p id="pro-status" style="font-size: 0.7rem; font-weight: 200; opacity: 0.5; margin-bottom: 15px;">Unlock all features with Aura Pro</p>
-                <button id="buy-pro-btn" class="btn-minimal" style="border-color: var(--gold); color: var(--gold);" onclick="purchasePro()">Upgrade to Pro (2.99€)</button>
+            <div id="pro-unlock-section" style="margin-top: 0px;">
+                <button id="buy-pro-btn" class="btn-minimal" style="border-color: var(--gold); color: var(--gold); margin-bottom: 15px;" onclick="purchasePro()">Upgrade to Pro (2.99€)</button>
             </div>
 
-            <div style="margin-top: 30px; font-size: 0.6rem; color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; cursor: pointer; display: inline-block;" onclick="calibrateBPM()">Calibrate resting bpm</div>
+            <button class="btn-minimal" style="width: 100%;" onclick="calibrateBPM()">Calibrate BPM</button>
             
             <div id="install-row">
-                <button class="btn-minimal" onclick="installApp()" style="margin-top: 20px;">Install Aura App</button>
+                <button class="btn-minimal" onclick="installApp()" style="margin-top: 20px; width: 100%;">Install Aura App</button>
             </div>
 
-            <button class="btn-minimal" style="margin-top: 40px;" onclick="toggleProgress()">Back</button>
+            <button class="btn-minimal" style="margin-top: 20px; border: none; opacity: 0.5;" onclick="toggleProgress()">Back</button>
         </div>
     </div>
 
@@ -193,31 +226,41 @@
 
             <div class="modes-grid">
                 <button class="mode-card" onclick="startMode('box')">
-                    <div class="mode-header"><b>BOX BREATH</b></div>
+                    <div class="mode-header">
+                        <div class="m-icon rect"></div>
+                        <b>BOX BREATH</b>
+                    </div>
                     <span>Equal parts inhalation, retention, and release.</span>
                 </button>
                 <button class="mode-card" id="mode-relax" onclick="startMode('relax')">
-                    <div class="mode-header"><b>THE RELAXER</b><span class="pro-lock-tag">PRO</span></div>
+                    <div class="mode-header">
+                        <div class="m-icon oval"></div>
+                        <b>RELAXATION BREATH</b>
+                        <span class="pro-lock-tag">PRO</span>
+                    </div>
                     <span>Extension of the exhale to trigger deep relief.</span>
                 </button>
                 <button class="mode-card" id="mode-steady" onclick="startMode('steady')">
-                    <div class="mode-header"><b>COHERENCE</b><span class="pro-lock-tag">PRO</span></div>
+                    <div class="mode-header">
+                        <div class="m-icon circle"></div>
+                        <b>COHERENCE BREATH</b>
+                        <span class="pro-lock-tag">PRO</span>
+                    </div>
                     <span>Rhythmic balance to align heart and mind.</span>
                 </button>
             </div>
 
-            <section class="chart-container">
+            <section class="chart-section">
                 <div class="chart-header">
-                    <span class="chart-title">Weekly Minutes</span>
-                    <span id="weekly-total" class="chart-subtitle">0 min total</span>
+                    <div class="chart-label-group"><span>Total Weekly</span><b id="chart-total-min">0 min</b></div>
+                    <div class="chart-label-group" style="text-align: right;"><span>Daily Avg</span><b id="chart-avg-min">0 min/day</b></div>
                 </div>
-                <div class="bar-chart" id="weekly-chart"></div>
+                <div class="bar-chart-container" id="bar-chart"></div>
             </section>
         </div>
     </div>
 
     <div id="game-ui">
-        <div id="session-timer">00:00</div>
         <div id="session-progress-tracker"></div>
         <button id="exit-btn" onclick="endSession()">Exit</button>
         <div id="instruction">Focus</div>
@@ -227,11 +270,20 @@
     <canvas id="canvas"></canvas>
 
 <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('install-row').style.display = 'block'; });
+
+    async function installApp() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') document.getElementById('install-row').style.display = 'none';
+        deferredPrompt = null;
     }
 
-    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], dailyMinutes: {}, restingBPM: 60, isPro: false };
+    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0 };
     let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
@@ -270,8 +322,8 @@
     function renderProUI() {
         if(stats.isPro) {
             document.body.classList.add('is-pro');
-            document.getElementById('pro-status').innerText = "Aura Pro Active";
-            document.getElementById('buy-pro-btn').style.display = 'none';
+            const proBtn = document.getElementById('buy-pro-btn');
+            if(proBtn) proBtn.style.display = "none";
             document.getElementById('display-name').innerHTML = `${stats.userName}<span class="pro-badge-main">PRO</span>`;
             document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('locked'));
         } else {
@@ -283,8 +335,21 @@
 
     function toggleProgress() {
         const menu = document.getElementById('progress-menu');
-        document.getElementById('stat-total').innerText = stats.totalSessions;
-        renderHeatmap(); menu.classList.toggle('active');
+        
+        // Complex stats calculation
+        const historyCount = stats.history.length;
+        const completionRate = Math.min(100, Math.round((historyCount / 35) * 100)); // Rate over 35 days (heatmap size)
+        
+        let totalMins = 0;
+        for(let key in stats.dailyMinutes) totalMins += stats.dailyMinutes[key];
+
+        document.getElementById('comp-total').innerText = stats.totalSessions;
+        document.getElementById('comp-rate').innerText = completionRate + "%";
+        document.getElementById('comp-best').innerText = stats.bestStreak || stats.streak;
+        document.getElementById('comp-mins').innerText = Math.round(totalMins);
+
+        renderHeatmap(); 
+        menu.classList.toggle('active');
     }
 
     function renderHeatmap() {
@@ -332,84 +397,97 @@
         }
     }
 
-    async function startMode(modeKey) {
+    function startMode(modeKey) {
         const premiumModes = ['relax', 'steady'];
         if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
         const modes = {
             box: { title: "BOX BREATH", explainer: "Resetting the nervous system through equalized rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
-            relax: { title: "THE RELAXER", explainer: "Extending the exhale to signal safety to the body.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
-            steady: { title: "COHERENCE", explainer: "Harmonizing heart and mind in a single balanced flow.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 }
+            relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale to signal safety to the body.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
+            steady: { title: "COHERENCE BREATH", explainer: "Harmonizing heart and mind in a single balanced flow.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 }
         };
-        activeSessionID++; const currentID = activeSessionID; currentMode = modes[modeKey];
+        activeSessionID++; 
+        const currentID = activeSessionID; 
+        currentMode = modes[modeKey];
+        
         document.getElementById('dashboard').classList.remove('active');
         
         setTimeout(() => { 
-            playIntro(currentMode.title, currentMode.explainer, 3800, async () => {
+            playIntro(currentMode.title, currentMode.explainer, 3800, () => {
                 if (currentID !== activeSessionID) return; 
-                isGaming = true; sessionStartTime = 0; bpmHistory = [];
-                orbSize = 80; targetSize = 80; targetBPM = stats.restingBPM;
+                
+                isGaming = true;
+                bpmHistory = [];
+                orbSize = 80; 
+                targetSize = 80; 
+                targetBPM = stats.restingBPM;
                 initProgressBars();
-                document.getElementById('game-ui').classList.add('active');
                 
-                const instr = document.getElementById('instruction');
-                const subInstr = document.getElementById('sub-instruction');
-                subInstr.innerText = "Prepare";
-                for(let i = 3; i > 0; i--) {
-                    if (currentID !== activeSessionID) return;
-                    instr.innerText = i;
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-                
-                if (currentID !== activeSessionID) return;
                 sessionStartTime = Date.now();
+                document.getElementById('game-ui').classList.add('active');
                 setupAudio(currentMode.freq); 
+                
                 runSequence(0, currentID);
             });
         }, 500);
     }
 
     function endSession() {
+        if (!isGaming) return;
         isGaming = false;
         activeSessionID++; 
-        if(audioCtx) { audioCtx.close(); audioCtx = null; }
+        
+        if(audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+        
         const todayStr = new Date().toDateString();
-        if (stats.lastDate !== todayStr) { const yesterday = new Date(Date.now() - 86400000).toDateString(); stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; stats.lastDate = todayStr; if(!stats.history.includes(todayStr)) stats.history.push(todayStr); }
-        stats.totalSessions++; 
-        stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + Math.ceil(sessionDuration / 60);
-        localStorage.setItem('aura_stats', JSON.stringify(stats));
+        if (sessionStartTime > 0) {
+            if (stats.lastDate !== todayStr) { 
+                const yesterday = new Date(Date.now() - 86400000).toDateString(); 
+                stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; 
+                stats.lastDate = todayStr; 
+                if(!stats.history.includes(todayStr)) stats.history.push(todayStr); 
+                if(stats.streak > (stats.bestStreak || 0)) stats.bestStreak = stats.streak;
+            }
+            if(!stats.dailyMinutes) stats.dailyMinutes = {};
+            stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + (sessionDuration / 60);
+            stats.totalSessions++; 
+            localStorage.setItem('aura_stats', JSON.stringify(stats));
+        }
+        
         document.getElementById('game-ui').classList.remove('active');
-        const avgBpm = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) || stats.restingBPM;
-        document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
-        document.getElementById('summary-overlay').classList.add('active');
+        const avgBpm = (bpmHistory && bpmHistory.length > 0) ? Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) : stats.restingBPM;
+        document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; 
+        document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
+        setTimeout(() => { document.getElementById('summary-overlay').classList.add('active'); }, 300);
     }
 
-    function closeSummary() { document.getElementById('summary-overlay').classList.remove('active'); document.getElementById('dashboard').classList.add('active'); renderDashboard(); }
+    function closeSummary() { 
+        document.getElementById('summary-overlay').classList.remove('active'); 
+        document.getElementById('dashboard').classList.add('active'); 
+        renderDashboard(); 
+    }
 
     async function runSequence(index, sessionID) {
         if (!isGaming || !currentMode || sessionID !== activeSessionID) return;
         const step = currentMode.sequence[index % currentMode.sequence.length];
         document.getElementById('instruction').innerText = step.a; targetSize = step.s; targetBPM = step.b;
-        let remaining = step.t / 1000; document.getElementById('sub-instruction').innerText = remaining + "s";
+        let stepRemaining = step.t / 1000; document.getElementById('sub-instruction').innerText = stepRemaining + "s";
+        
         const stepTimer = setInterval(() => {
             if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
-            remaining--; if (remaining > 0) document.getElementById('sub-instruction').innerText = remaining + "s";
-            const totalElapsed = (Date.now() - sessionStartTime) / 1000;
-            const sessionLeft = Math.max(0, Math.ceil(sessionDuration - totalElapsed));
-            document.getElementById('session-timer').innerText = `${Math.floor(sessionLeft / 60)}:${(sessionLeft % 60).toString().padStart(2, '0')}`;
+            stepRemaining--; 
+            if (stepRemaining >= 0) {
+                document.getElementById('sub-instruction').innerText = stepRemaining + "s";
+            }
             
-            const progress = totalElapsed / sessionDuration;
+            const totalElapsed = (Date.now() - sessionStartTime) / 1000;
+            const progress = Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
-            ticks.forEach((t, i) => {
-                if (i < activeCount) t.classList.add('active');
-                else t.classList.remove('active');
-            });
+            ticks.forEach((t, i) => { t.classList.toggle('active', i < activeCount); });
 
-            if(totalElapsed >= sessionDuration) {
-                clearInterval(stepTimer);
-                endSession();
-            }
+            if(totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
         }, 1000);
+        
         await new Promise(r => setTimeout(r, step.t)); 
         clearInterval(stepTimer);
         if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
@@ -418,41 +496,36 @@
     function setupAudio(baseFreq) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const createOsc = (f, gv) => { const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.frequency.setValueAtTime(f, audioCtx.currentTime); g.gain.setValueAtTime(0, audioCtx.currentTime); g.gain.linearRampToValueAtTime(gv, audioCtx.currentTime + 3); osc.connect(g).connect(audioCtx.destination); osc.start(); }; createOsc(baseFreq, 0.04); createOsc(baseFreq * 0.5, 0.02); } catch(e) {} }
 
     function renderDashboard() {
-        document.getElementById('streak-count').innerText = stats.streak; document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; document.getElementById('display-name').innerHTML = stats.isPro ? `${stats.userName}<span class="pro-badge-main">PRO</span>` : stats.userName;
-        
+        document.getElementById('streak-count').innerText = stats.streak; 
+        document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; 
+        document.getElementById('display-name').innerHTML = stats.isPro ? `${stats.userName}<span class="pro-badge-main">PRO</span>` : stats.userName;
         const track = document.getElementById('week-track'); track.innerHTML = '';
-        const today = new Date().getDay();
-        const days = ['S','M','T','W','T','F','S'];
-        days.forEach((d, i) => { track.innerHTML += `<div class="day-dot"><div class="dot ${i === today ? 'active' : ''}"></div>${d}</div>`; });
+        const dayLabels = ['S','M','T','W','T','F','S'];
+        const todayIdx = new Date().getDay();
+        dayLabels.forEach((d, i) => { track.innerHTML += `<div class="day-dot"><div class="dot ${i === todayIdx ? 'active' : ''}"></div>${d}</div>`; });
+        renderActivityChart();
+    }
 
-        const chart = document.getElementById('weekly-chart'); chart.innerHTML = '';
-        const now = new Date();
-        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); 
-        let weeklyTotal = 0;
-        let maxMinutes = 0;
-        const weeklyData = [];
+    function renderActivityChart() {
+        const container = document.getElementById('bar-chart'); container.innerHTML = '';
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const now = new Date(); const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff));
 
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(startOfWeek);
-            date.setDate(date.getDate() + i);
-            const dateStr = date.toDateString();
-            const minutes = stats.dailyMinutes[dateStr] || 0;
-            weeklyData.push({ day: days[date.getDay()], minutes: minutes });
-            weeklyTotal += minutes;
-            if (minutes > maxMinutes) maxMinutes = minutes;
+        let weeklyMinutes = 0; let maxDaily = 0.5; const weekData = [];
+        for(let i=0; i<7; i++) {
+            const date = new Date(monday); date.setDate(monday.getDate() + i);
+            const mins = (stats.dailyMinutes && stats.dailyMinutes[date.toDateString()]) ? stats.dailyMinutes[date.toDateString()] : 0;
+            weekData.push(mins); weeklyMinutes += mins; if(mins > maxDaily) maxDaily = mins;
         }
 
-        document.getElementById('weekly-total').innerText = `${weeklyTotal} min total`;
+        document.getElementById('chart-total-min').innerText = `${weeklyMinutes.toFixed(1)} min`;
+        document.getElementById('chart-avg-min').innerText = `${(weeklyMinutes / 7).toFixed(1)} min/day`;
 
-        weeklyData.forEach(data => {
-            // If there is no activity yet, show placeholder height
-            const placeholderHeight = 12; 
-            const heightPercentage = maxMinutes > 0 ? (data.minutes / maxMinutes) * 100 : placeholderHeight;
-            chart.innerHTML += `
-                <div class="bar-group">
-                    <div class="bar ${data.minutes > 0 ? 'active' : ''}" style="height: ${Math.max(heightPercentage, 4)}%"></div>
-                    <div class="bar-label">${data.day}</div>
-                </div>`;
+        weekData.forEach((val, i) => {
+            const height = (val / maxDaily) * 80;
+            container.innerHTML += `<div class="bar-chart-group"><div class="bar-wrapper"><div class="bar-fill ${val > 0 ? 'active' : ''}" style="height: ${Math.max(height, 4)}px"></div></div><div class="day-label">${dayNames[i]}</div></div>`;
         });
     }
 
@@ -471,9 +544,9 @@
         ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(boxX + ecgAreaWidth, boxY, bpmAreaWidth, boxHeight);
         ctx.fillStyle = '#ffffff'; ctx.font = '100 1.2rem Inter'; ctx.textAlign = 'center'; ctx.fillText(Math.round(bpm), boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 38);
         ctx.font = '300 0.5rem Inter'; ctx.globalAlpha = 0.4; ctx.fillText('BPM', boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 52); ctx.globalAlpha = 1;
-        bpm += (targetBPM - bpm) * 0.01; const now = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
+        bpm += (targetBPM - bpm) * 0.01; const beatNow = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
         if(isGaming && sessionStartTime > 0) bpmHistory.push(bpm);
-        let yOffset = 0; let t = now - lastBeatTime; if (t > beatInterval) { lastBeatTime = now; }
+        let yOffset = 0; let t = beatNow - lastBeatTime; if (t > beatInterval) { lastBeatTime = beatNow; }
         if (t < 100) yOffset = -Math.sin((t/100) * Math.PI) * 4; else if (t < 175) yOffset = 4; else if (t < 200) yOffset = -35; else if (t < 225) yOffset = 8; else if (t < 400) yOffset = -Math.sin(((t-225)/175) * Math.PI) * 6;
         ecgPoints.push({x: ecgX, y: baselineY + yOffset}); if (ecgPoints.length > 90) ecgPoints.shift();
         ctx.beginPath(); ctx.shadowBlur = 10; ctx.shadowColor = currentMode ? currentMode.color : '#fff'; ctx.strokeStyle = currentMode ? currentMode.color : '#fff'; ctx.lineWidth = 2;
@@ -485,8 +558,7 @@
     function animate() {
         ctx.fillStyle = '#01060b'; ctx.fillRect(0, 0, width, height);
         const cX = width / 2; const cY = isGaming ? height * 0.45 : height * 0.5;
-        let color;
-        const softPulse = Math.sin(Date.now() / 1000) * 16; 
+        let color; const softPulse = Math.sin(Date.now() / 1000) * 16; 
         if (isGaming && currentMode) { color = currentMode.color; orbSize += (targetSize - orbSize) * 0.02; } 
         else { menuHue = (menuHue + 0.04) % 360; color = `hsl(${menuHue}, 50%, 50%)`; orbSize = 140; }
         ctx.save(); ctx.filter = 'blur(120px)'; 
