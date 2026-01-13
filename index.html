@@ -52,7 +52,6 @@
         .heat-cell { aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 4px; }
         .heat-cell.active { background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
-        /* Complex Info Grid */
         .complexity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
         .comp-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 15px; border-radius: 20px; text-align: left; }
         .comp-label { font-size: 0.55rem; text-transform: uppercase; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-bottom: 5px; display: block; }
@@ -65,6 +64,7 @@
         .m-icon.rect { border-radius: 0; }
         .m-icon.oval { width: 20px; height: 10px; border-radius: 10px; }
         .m-icon.circle { border-radius: 50%; }
+        .m-icon.diamond { width: 12px; height: 12px; transform: rotate(45deg); }
 
         .pro-lock-tag { font-size: 0.5rem; letter-spacing: 1px; font-weight: 500; color: var(--gold); border: 1px solid var(--gold); padding: 3px 7px; border-radius: 12px; opacity: 0; transition: 0.3s; margin-left: auto; }
         .mode-card.locked { opacity: 0.5; filter: grayscale(0.2); }
@@ -156,12 +156,12 @@
                 <div class="heatmap" id="heatmap"></div>
                 <div class="complexity-grid">
                     <div class="comp-card">
-                        <span class="comp-label">Total Rituals</span>
-                        <div id="comp-total" class="comp-val">0</div>
+                        <span class="comp-label">Avg Hold</span>
+                        <div id="comp-avg-hold" class="comp-val">0s</div>
                     </div>
                     <div class="comp-card">
-                        <span class="comp-label">Completion Rate</span>
-                        <div id="comp-rate" class="comp-val">0%</div>
+                        <span class="comp-label">Best Hold</span>
+                        <div id="comp-best-hold" class="comp-val">0s</div>
                     </div>
                     <div class="comp-card">
                         <span class="comp-label">Best Streak</span>
@@ -174,7 +174,7 @@
                 </div>
             </div>
             
-            <div id="pro-unlock-section" style="margin-top: 0px;">
+            <div id="pro-unlock-section">
                 <button id="buy-pro-btn" class="btn-minimal" style="border-color: var(--gold); color: var(--gold); margin-bottom: 15px;" onclick="purchasePro()">Upgrade to Pro (2.99€)</button>
             </div>
 
@@ -248,6 +248,13 @@
                     </div>
                     <span>Rhythmic balance to align heart and mind.</span>
                 </button>
+                <button class="mode-card" onclick="startMode('hold_test')">
+                    <div class="mode-header">
+                        <div class="m-icon diamond"></div>
+                        <b>BREATH HOLD TEST</b>
+                    </div>
+                    <span>Measure your lung capacity and track progress.</span>
+                </button>
             </div>
 
             <section class="chart-section">
@@ -283,7 +290,7 @@
         deferredPrompt = null;
     }
 
-    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0 };
+    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0, holdHistory: [], longestHold: 0 };
     let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
@@ -335,19 +342,15 @@
 
     function toggleProgress() {
         const menu = document.getElementById('progress-menu');
-        
-        // Complex stats calculation
-        const historyCount = stats.history.length;
-        const completionRate = Math.min(100, Math.round((historyCount / 35) * 100)); // Rate over 35 days (heatmap size)
-        
         let totalMins = 0;
         for(let key in stats.dailyMinutes) totalMins += stats.dailyMinutes[key];
-
-        document.getElementById('comp-total').innerText = stats.totalSessions;
-        document.getElementById('comp-rate').innerText = completionRate + "%";
+        const avgHold = stats.holdHistory && stats.holdHistory.length > 0 
+            ? Math.round(stats.holdHistory.reduce((a,b) => a+b, 0) / stats.holdHistory.length) 
+            : 0;
+        document.getElementById('comp-avg-hold').innerText = avgHold + "s";
+        document.getElementById('comp-best-hold').innerText = (stats.longestHold || 0) + "s";
         document.getElementById('comp-best').innerText = stats.bestStreak || stats.streak;
         document.getElementById('comp-mins').innerText = Math.round(totalMins);
-
         renderHeatmap(); 
         menu.classList.toggle('active');
     }
@@ -401,31 +404,27 @@
         const premiumModes = ['relax', 'steady'];
         if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
         const modes = {
-            box: { title: "BOX BREATH", explainer: "Resetting the nervous system through equalized rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
-            relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale to signal safety to the body.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
-            steady: { title: "COHERENCE BREATH", explainer: "Harmonizing heart and mind in a single balanced flow.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 }
+            box: { title: "BOX BREATH", explainer: "Resetting rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
+            relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
+            steady: { title: "COHERENCE BREATH", explainer: "Harmonizing rhythms.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 },
+            hold_test: { title: "HOLD TEST", isTest: true, sequence: [{a:'HOLD',t:600000,s:130,b:60}], color: '#ffffff', freq: 432 }
         };
         activeSessionID++; 
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
         
+        // Context-sensitive stop button label
+        document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
+
         document.getElementById('dashboard').classList.remove('active');
-        
         setTimeout(() => { 
-            playIntro(currentMode.title, currentMode.explainer, 3800, () => {
+            playIntro(currentMode.title, currentMode.explainer || "", 3800, () => {
                 if (currentID !== activeSessionID) return; 
-                
-                isGaming = true;
-                bpmHistory = [];
-                orbSize = 80; 
-                targetSize = 80; 
-                targetBPM = stats.restingBPM;
+                isGaming = true; bpmHistory = []; orbSize = 80; targetSize = 80; targetBPM = stats.restingBPM;
                 initProgressBars();
-                
                 sessionStartTime = Date.now();
                 document.getElementById('game-ui').classList.add('active');
                 setupAudio(currentMode.freq); 
-                
                 runSequence(0, currentID);
             });
         }, 500);
@@ -436,6 +435,7 @@
         isGaming = false;
         activeSessionID++; 
         
+        const elapsedSec = Math.floor((Date.now() - sessionStartTime) / 1000);
         if(audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
         
         const todayStr = new Date().toDateString();
@@ -447,47 +447,52 @@
                 if(!stats.history.includes(todayStr)) stats.history.push(todayStr); 
                 if(stats.streak > (stats.bestStreak || 0)) stats.bestStreak = stats.streak;
             }
+            if (currentMode.isTest) {
+                if(!stats.holdHistory) stats.holdHistory = [];
+                stats.holdHistory.push(elapsedSec);
+                if(elapsedSec > (stats.longestHold || 0)) stats.longestHold = elapsedSec;
+            }
             if(!stats.dailyMinutes) stats.dailyMinutes = {};
-            stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + (sessionDuration / 60);
+            stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + (elapsedSec / 60);
             stats.totalSessions++; 
             localStorage.setItem('aura_stats', JSON.stringify(stats));
         }
         
         document.getElementById('game-ui').classList.remove('active');
         const avgBpm = (bpmHistory && bpmHistory.length > 0) ? Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) : stats.restingBPM;
-        document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; 
-        document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
+        
+        if (currentMode.isTest) {
+            document.getElementById('summary-streak').innerText = `${elapsedSec}s hold`;
+            document.getElementById('summary-bpm').innerText = `Best: ${stats.longestHold}s`;
+        } else {
+            document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; 
+            document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
+        }
         setTimeout(() => { document.getElementById('summary-overlay').classList.add('active'); }, 300);
     }
 
-    function closeSummary() { 
-        document.getElementById('summary-overlay').classList.remove('active'); 
-        document.getElementById('dashboard').classList.add('active'); 
-        renderDashboard(); 
-    }
+    function closeSummary() { document.getElementById('summary-overlay').classList.remove('active'); document.getElementById('dashboard').classList.add('active'); renderDashboard(); }
 
     async function runSequence(index, sessionID) {
         if (!isGaming || !currentMode || sessionID !== activeSessionID) return;
         const step = currentMode.sequence[index % currentMode.sequence.length];
         document.getElementById('instruction').innerText = step.a; targetSize = step.s; targetBPM = step.b;
-        let stepRemaining = step.t / 1000; document.getElementById('sub-instruction').innerText = stepRemaining + "s";
-        
+        let stepRemaining = step.t / 1000;
         const stepTimer = setInterval(() => {
             if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
-            stepRemaining--; 
-            if (stepRemaining >= 0) {
-                document.getElementById('sub-instruction').innerText = stepRemaining + "s";
-            }
-            
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
-            const progress = Math.min(1, totalElapsed / sessionDuration);
+            if (currentMode.isTest) {
+                document.getElementById('sub-instruction').innerText = Math.floor(totalElapsed) + "s";
+            } else {
+                stepRemaining--;
+                if (stepRemaining >= 0) document.getElementById('sub-instruction').innerText = Math.max(0, Math.floor(stepRemaining)) + "s";
+            }
+            const progress = currentMode.isTest ? Math.min(1, totalElapsed / 60) : Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
             ticks.forEach((t, i) => { t.classList.toggle('active', i < activeCount); });
-
-            if(totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
+            if(!currentMode.isTest && totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
         }, 1000);
-        
         await new Promise(r => setTimeout(r, step.t)); 
         clearInterval(stepTimer);
         if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
@@ -512,17 +517,14 @@
         const now = new Date(); const day = now.getDay();
         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(now.setDate(diff));
-
         let weeklyMinutes = 0; let maxDaily = 0.5; const weekData = [];
         for(let i=0; i<7; i++) {
             const date = new Date(monday); date.setDate(monday.getDate() + i);
             const mins = (stats.dailyMinutes && stats.dailyMinutes[date.toDateString()]) ? stats.dailyMinutes[date.toDateString()] : 0;
             weekData.push(mins); weeklyMinutes += mins; if(mins > maxDaily) maxDaily = mins;
         }
-
         document.getElementById('chart-total-min').innerText = `${weeklyMinutes.toFixed(1)} min`;
         document.getElementById('chart-avg-min').innerText = `${(weeklyMinutes / 7).toFixed(1)} min/day`;
-
         weekData.forEach((val, i) => {
             const height = (val / maxDaily) * 80;
             container.innerHTML += `<div class="bar-chart-group"><div class="bar-wrapper"><div class="bar-fill ${val > 0 ? 'active' : ''}" style="height: ${Math.max(height, 4)}px"></div></div><div class="day-label">${dayNames[i]}</div></div>`;
