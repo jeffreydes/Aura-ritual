@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Aura | Personal Ritual</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;600&display=swap');
+
+        :root {
+            --bg: #01060b;
+            --surface: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #ffffff;
+            --gold: #d4af37; 
+            --text-main: #ffffff; 
+            --glass: blur(25px);
+            --safe-top: env(safe-area-inset-top, 20px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: var(--text-main);
+            user-select: none;
+            touch-action: none;
+        }
+
+        canvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; width: 100%; height: 100%; }
+
+        .overlay {
+            position: fixed; inset: 0; z-index: 1500; background: rgba(1, 6, 11, 0.92);
+            backdrop-filter: blur(40px); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; opacity: 0; visibility: hidden;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); padding: 40px;
+        }
+        .overlay.active { opacity: 1; visibility: visible; }
+        
+        .content-box { width: 100%; max-width: 400px; text-align: center; }
+        .stat-group { margin-bottom: 35px; }
+        .stat-label { font-size: 0.7rem; font-weight: 200; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
+        .stat-value { font-size: 2.2rem; font-weight: 100; }
+
+        .heatmap { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 20px 0; width: 100%; }
+        .heat-cell { aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .heat-cell.active { background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        .pro-badge-main { background: var(--gold); color: #000; font-size: 0.5rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
+        .mode-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .pro-lock-tag { font-size: 0.5rem; letter-spacing: 1px; font-weight: 500; color: var(--gold); border: 1px solid var(--gold); padding: 3px 7px; border-radius: 12px; opacity: 0; transition: 0.3s; }
+        .mode-card.locked { opacity: 0.5; filter: grayscale(0.2); }
+        .mode-card.locked .pro-lock-tag { opacity: 0.9; }
+        body.is-pro .pro-lock-tag { display: none !important; }
+
+        #intro-overlay {
+            position: fixed; inset: 0; z-index: 1000; background: var(--bg);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 1.5s ease, visibility 1.5s;
+        }
+        .intro-text-container { text-align: center; max-width: 85%; }
+        .intro-title { font-weight: 100; letter-spacing: 6px; font-size: 1.5rem; opacity: 0; transform: translateY(10px); transition: all 1s ease; margin-bottom: 15px; text-transform: uppercase; }
+        .intro-subtitle { font-weight: 300; font-size: 0.85rem; color: rgba(255,255,255,0.7); opacity: 0; transform: translateY(10px); transition: all 1s ease 0.2s; line-height: 1.6; }
+        .intro-title.visible, .intro-subtitle.visible { opacity: 1; transform: translateY(0); }
+
+        #name-input-container { display: flex; flex-direction: column; align-items: center; gap: 35px; opacity: 0; transform: translateY(10px); transition: 1s ease; pointer-events: none; width: 100%; max-width: 300px; }
+        #name-input-container.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        #user-name-input { background: transparent; border: none; border-bottom: 1px solid var(--border); color: white; font-size: 1.4rem; text-align: center; padding: 10px; width: 100%; outline: none; font-weight: 100; }
+        .btn-minimal { background: none; border: 1px solid var(--border); color: white; padding: 12px 45px; border-radius: 40px; cursor: pointer; font-size: 0.75rem; letter-spacing: 2px; transition: 0.3s; font-weight: 300; text-transform: uppercase; }
+        .btn-minimal:hover { border-color: white; background: rgba(255,255,255,0.05); }
+
+        #dashboard { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding: calc(var(--safe-top) + 20px) 25px var(--safe-bottom); z-index: 100; transition: opacity 1s ease, transform 1s ease; overflow-y: auto; overflow-x: hidden; opacity: 0; pointer-events: none; transform: translateY(10px); }
+        #dashboard.active { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .content-wrapper { width: 100%; max-width: 450px; display: flex; flex-direction: column; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; width: 100%; }
+        .user-profile { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)); border: 1px solid var(--border); }
+        .welcome h2 { font-size: 0.6rem; margin: 0; color: rgba(255,255,255,0.5); font-weight: 300; letter-spacing: 2px; text-transform: uppercase; }
+        .welcome p { font-size: 1.2rem; margin: 0; font-weight: 100; }
+
+        .config-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .toggle-group { display: flex; background: var(--surface); border-radius: 20px; padding: 4px; border: 1px solid var(--border); }
+        .toggle-btn { border: none; background: none; color: rgba(255,255,255,0.4); padding: 6px 14px; border-radius: 16px; font-size: 0.7rem; cursor: pointer; font-weight: 300; transition: 0.3s; }
+        .toggle-btn.active { background: rgba(255,255,255,0.1); color: white; }
+
+        .stats-container { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 25px; backdrop-filter: var(--glass); margin-bottom: 25px; }
+        .week-track { display: flex; justify-content: space-between; margin-top: 25px; width: 100%; }
+        .day-dot { display: flex; flex-direction: column; align-items: center; gap: 12px; font-size: 0.6rem; color: rgba(255,255,255,0.6); font-weight: 300; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.1); }
+        .dot.active { background: #ffffff; box-shadow: 0 0 15px #ffffff; }
+
+        .modes-grid { display: grid; gap: 15px; width: 100%; }
+        .mode-card { background: var(--surface); border: 1px solid var(--border); padding: 28px; border-radius: 30px; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); backdrop-filter: var(--glass); text-align: left; color: inherit; width: 100%; box-sizing: border-box; }
+        .mode-card:hover { border-color: #ffffff; transform: translateY(-3px); }
+        .mode-card b { display: block; font-size: 1.1rem; letter-spacing: 2px; font-weight: 200; text-transform: uppercase; }
+        .mode-card span { color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 300; line-height: 1.6; }
+
+        #game-ui { 
+            position: fixed; inset: 0; z-index: 200; 
+            display: flex; flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            opacity: 0; pointer-events: none; transition: opacity 1.5s ease; background: transparent; text-align: center; 
+            padding-bottom: 10vh; 
+        }
+        #game-ui.active { opacity: 1; pointer-events: auto; }
+        #instruction { font-size: clamp(4rem, 16vw, 10rem); font-weight: 100; letter-spacing: 20px; text-transform: uppercase; margin-bottom: 10px; color: #ffffff; }
+        #sub-instruction { font-size: 2rem; color: #ffffff; letter-spacing: 8px; font-weight: 100; }
+        
+        #exit-btn { position: absolute; top: var(--safe-top); right: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); color: white; padding: 10px 22px; border-radius: 40px; cursor: pointer; font-size: 0.7rem; transition: 0.3s; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
+        #session-timer { position: absolute; top: var(--safe-top); left: 25px; color: white; font-weight: 100; font-size: 0.8rem; letter-spacing: 2px; opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="summary-overlay" class="overlay">
+        <div class="content-box">
+            <div class="stat-group"><div class="stat-label">Ritual complete</div><div id="summary-streak" class="stat-value">0 day streak</div></div>
+            <div class="stat-group"><div class="stat-label">Average rhythm</div><div id="summary-bpm" class="stat-value">60 bpm</div></div>
+            <button class="btn-minimal" onclick="closeSummary()">Done</button>
+        </div>
+    </div>
+
+    <div id="progress-menu" class="overlay">
+        <div class="content-box">
+            <div class="stat-group"><div class="stat-label">Ritual consistency</div><div class="heatmap" id="heatmap"></div></div>
+            <div class="stat-group"><div class="stat-label">Total rituals</div><div id="stat-total" class="progress-value">0</div></div>
+            
+            <div id="pro-unlock-section" style="margin-top: 20px;">
+                <p id="pro-status" style="font-size: 0.7rem; font-weight: 200; opacity: 0.5; margin-bottom: 15px;">Unlock all features with Aura Pro</p>
+                <button id="buy-pro-btn" class="btn-minimal" style="border-color: var(--gold); color: var(--gold);" onclick="purchasePro()">Upgrade to Pro (2.99€)</button>
+            </div>
+
+            <div style="margin-top: 30px; font-size: 0.6rem; color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; cursor: pointer; display: inline-block;" onclick="calibrateBPM()">Calibrate resting bpm</div>
+            <button class="btn-minimal" style="margin-top: 40px;" onclick="toggleProgress()">Back</button>
+        </div>
+    </div>
+
+    <div id="intro-overlay">
+        <div class="intro-text-container"><div id="intro-title" class="intro-title"></div><div id="intro-subtitle" class="intro-subtitle"></div></div>
+        <div id="name-input-container">
+            <span class="intro-title visible" style="position: relative; margin-bottom: 10px; letter-spacing: 12px;">AURA</span>
+            <input type="text" id="user-name-input" placeholder="Enter name" spellcheck="false" autocomplete="off">
+            <button class="btn-minimal" onclick="saveName()">Begin</button>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="content-wrapper">
+            <header>
+                <div class="user-profile" onclick="toggleProgress()">
+                    <div class="avatar"></div>
+                    <div class="welcome"><h2>Personal ritual</h2><p id="display-name">Seeker</p></div>
+                </div>
+                <div class="streak-badge"><span id="streak-count">0</span> days</div>
+            </header>
+
+            <div class="config-row">
+                <span style="font-size: 0.65rem; font-weight: 300; letter-spacing: 2px; color: rgba(255,255,255,0.4); text-transform: uppercase;">Duration</span>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" onclick="setDuration(30, this)">30s</button>
+                    <button class="toggle-btn" id="dur-1m" onclick="setDuration(60, this)">1m</button>
+                    <button class="toggle-btn" id="dur-2m" onclick="setDuration(120, this)">2m</button>
+                </div>
+            </div>
+
+            <section class="stats-container">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <span style="font-size: 0.7rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5);">Consistency</span>
+                    <span id="total-sessions" style="font-size: 0.7rem; font-weight: 300; color: rgba(255,255,255,0.5);">0 sessions</span>
+                </div>
+                <div class="week-track" id="week-track"></div>
+            </section>
+
+            <div class="modes-grid">
+                <button class="mode-card" onclick="startMode('box')">
+                    <div class="mode-header"><b>BOX BREATH</b></div>
+                    <span>Equal parts inhalation, retention, and release.</span>
+                </button>
+                <button class="mode-card" id="mode-relax" onclick="startMode('relax')">
+                    <div class="mode-header"><b>THE RELAXER</b><span class="pro-lock-tag">PRO</span></div>
+                    <span>Extension of the exhale to trigger deep relief.</span>
+                </button>
+                <button class="mode-card" id="mode-steady" onclick="startMode('steady')">
+                    <div class="mode-header"><b>COHERENCE</b><span class="pro-lock-tag">PRO</span></div>
+                    <span>Rhythmic balance to align heart and mind.</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-ui">
+        <div id="session-timer">00:00</div>
+        <button id="exit-btn" onclick="endSession()">Exit</button>
+        <div id="instruction">Focus</div>
+        <div id="sub-instruction">Ready</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+<script>
+    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false };
+    let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
+    let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
+    let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
+
+    const overlay = document.getElementById('intro-overlay');
+    const introTitle = document.getElementById('intro-title');
+    const introSubtitle = document.getElementById('intro-subtitle');
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (stats.userName) {
+            document.getElementById('name-input-container').style.display = 'none';
+            playIntro(`Welcome back, ${stats.userName}`, "", 3000, () => {
+                document.getElementById('dashboard').classList.add('active');
+                renderDashboard();
+                renderProUI();
+            });
+        } else {
+            setTimeout(() => document.getElementById('name-input-container').classList.add('visible'), 600);
+        }
+    });
+
+    function setDuration(sec, btn) {
+        if(!stats.isPro && sec > 30) { alert("Aura Pro required for sessions longer than 30s."); toggleProgress(); return; }
+        sessionDuration = sec;
+        document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function purchasePro() {
+        if(confirm("Simulate purchase of Aura Pro for 2.99€?")) {
+            stats.isPro = true; localStorage.setItem('aura_stats', JSON.stringify(stats));
+            renderProUI(); renderDashboard(); alert("Aura Pro Unlocked.");
+        }
+    }
+
+    function renderProUI() {
+        if(stats.isPro) {
+            document.body.classList.add('is-pro');
+            document.getElementById('pro-status').innerText = "Aura Pro Active";
+            document.getElementById('buy-pro-btn').style.display = 'none';
+            document.getElementById('display-name').innerHTML = `${stats.userName}<span class="pro-badge-main">PRO</span>`;
+            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('locked'));
+        } else {
+            document.body.classList.remove('is-pro');
+            document.getElementById('mode-relax').classList.add('locked');
+            document.getElementById('mode-steady').classList.add('locked');
+        }
+    }
+
+    function toggleProgress() {
+        const menu = document.getElementById('progress-menu');
+        document.getElementById('stat-total').innerText = stats.totalSessions;
+        renderHeatmap(); menu.classList.toggle('active');
+    }
+
+    function renderHeatmap() {
+        const heat = document.getElementById('heatmap'); heat.innerHTML = '';
+        for(let i=34; i>=0; i--) {
+            const date = new Date(); date.setDate(date.getDate() - i);
+            const cell = document.createElement('div');
+            cell.className = 'heat-cell' + (stats.history.includes(date.toDateString()) ? ' active' : '');
+            heat.appendChild(cell);
+        }
+    }
+
+    function calibrateBPM() {
+        const input = prompt("Enter resting bpm:", stats.restingBPM);
+        if(input && !isNaN(input)) { stats.restingBPM = parseInt(input); localStorage.setItem('aura_stats', JSON.stringify(stats)); }
+    }
+
+    function playIntro(title, subtitle, duration, onComplete) {
+        overlay.style.visibility = 'visible'; overlay.style.opacity = '1';
+        introTitle.innerText = title; introSubtitle.innerText = subtitle;
+        setTimeout(() => { introTitle.classList.add('visible'); if(subtitle) introSubtitle.classList.add('visible'); }, 400);
+        setTimeout(() => { 
+            introTitle.classList.remove('visible'); introSubtitle.classList.remove('visible'); overlay.style.opacity = '0';
+            setTimeout(() => { overlay.style.visibility = 'hidden'; if(onComplete) onComplete(); }, 1500);
+        }, duration - 1000);
+    }
+
+    function saveName() {
+        const input = document.getElementById('user-name-input');
+        if (input.value.trim().length > 0) {
+            stats.userName = input.value.trim(); localStorage.setItem('aura_stats', JSON.stringify(stats));
+            document.getElementById('name-input-container').classList.remove('visible');
+            setTimeout(() => { document.getElementById('dashboard').classList.add('active'); renderDashboard(); renderProUI(); overlay.style.opacity = '0'; setTimeout(() => overlay.style.visibility = 'hidden', 1500); }, 1000);
+        }
+    }
+
+    function startMode(modeKey) {
+        const premiumModes = ['relax', 'steady'];
+        if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
+        const modes = {
+            box: { title: "BOX BREATH", explainer: "Resetting the nervous system through equalized rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
+            relax: { title: "THE RELAXER", explainer: "Extending the exhale to signal safety to the body.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
+            steady: { title: "COHERENCE", explainer: "Harmonizing heart and mind in a single balanced flow.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 }
+        };
+        activeSessionID++; const currentID = activeSessionID; currentMode = modes[modeKey];
+        document.getElementById('dashboard').classList.remove('active');
+        setTimeout(() => { playIntro(currentMode.title, currentMode.explainer, 3800, () => {
+                if (currentID !== activeSessionID) return; isGaming = true; sessionStartTime = Date.now(); bpmHistory = [];
+                orbSize = 80; targetSize = currentMode.sequence[0].s; targetBPM = currentMode.sequence[0].b;
+                document.getElementById('game-ui').classList.add('active'); setupAudio(currentMode.freq); runSequence(0, currentID);
+            });
+        }, 500);
+    }
+
+    function endSession() {
+        activeSessionID++; if(audioCtx) { audioCtx.close(); audioCtx = null; }
+        const today = new Date().toDateString();
+        if (stats.lastDate !== today) { const yesterday = new Date(Date.now() - 86400000).toDateString(); stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; stats.lastDate = today; if(!stats.history.includes(today)) stats.history.push(today); }
+        stats.totalSessions++; localStorage.setItem('aura_stats', JSON.stringify(stats));
+        isGaming = false; document.getElementById('game-ui').classList.remove('active');
+        const avgBpm = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) || stats.restingBPM;
+        document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
+        document.getElementById('summary-overlay').classList.add('active');
+    }
+
+    function closeSummary() { document.getElementById('summary-overlay').classList.remove('active'); document.getElementById('dashboard').classList.add('active'); renderDashboard(); }
+
+    async function runSequence(index, sessionID) {
+        if (!isGaming || !currentMode || sessionID !== activeSessionID) return;
+        const step = currentMode.sequence[index % currentMode.sequence.length];
+        document.getElementById('instruction').innerText = step.a; targetSize = step.s; targetBPM = step.b;
+        let remaining = step.t / 1000; document.getElementById('sub-instruction').innerText = remaining + "s";
+        const stepTimer = setInterval(() => {
+            if (sessionID !== activeSessionID) { clearInterval(stepTimer); return; }
+            remaining--; if (remaining > 0) document.getElementById('sub-instruction').innerText = remaining + "s";
+            const totalElapsed = (Date.now() - sessionStartTime) / 1000;
+            const sessionLeft = Math.max(0, Math.ceil(sessionDuration - totalElapsed));
+            document.getElementById('session-timer').innerText = `${Math.floor(sessionLeft / 60)}:${(sessionLeft % 60).toString().padStart(2, '0')}`;
+            if(totalElapsed >= sessionDuration) endSession();
+        }, 1000);
+        await new Promise(r => setTimeout(r, step.t)); clearInterval(stepTimer);
+        if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
+    }
+
+    function setupAudio(baseFreq) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const createOsc = (f, gv) => { const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.frequency.setValueAtTime(f, audioCtx.currentTime); g.gain.setValueAtTime(0, audioCtx.currentTime); g.gain.linearRampToValueAtTime(gv, audioCtx.currentTime + 3); osc.connect(g).connect(audioCtx.destination); osc.start(); }; createOsc(baseFreq, 0.04); createOsc(baseFreq * 0.5, 0.02); } catch(e) {} }
+
+    function renderDashboard() {
+        document.getElementById('streak-count').innerText = stats.streak; document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; document.getElementById('display-name').innerText = stats.userName;
+        const track = document.getElementById('week-track'); track.innerHTML = '';
+        const today = new Date().getDay();
+        ['S','M','T','W','T','F','S'].forEach((d, i) => { track.innerHTML += `<div class="day-dot"><div class="dot ${i === today ? 'active' : ''}"></div>${d}</div>`; });
+    }
+
+    const canvas = document.getElementById('canvas'); const ctx = canvas.getContext('2d');
+    let width, height, dpr;
+    function resize() { width = window.innerWidth; height = window.innerHeight; dpr = window.devicePixelRatio || 1; canvas.width = width * dpr; canvas.height = height * dpr; ctx.scale(dpr, dpr); }
+    window.addEventListener('resize', resize); resize();
+
+    function drawECG(cX) {
+        const boxWidth = Math.min(width * 0.85, 340); const boxHeight = 70; const safeBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 20;
+        const boxY = height - (boxHeight + 30 + safeBottom); const boxX = cX - (boxWidth / 2);
+        const ecgAreaWidth = boxWidth * 0.7; const bpmAreaWidth = boxWidth * 0.3; const baselineY = boxY + (boxHeight / 2) + 5;
+        ctx.save(); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 20); else ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.015)'; ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)'; ctx.lineWidth = 1; ctx.fill(); ctx.stroke(); ctx.clip();
+        ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(boxX + ecgAreaWidth, boxY, bpmAreaWidth, boxHeight);
+        ctx.fillStyle = '#ffffff'; ctx.font = '100 1.2rem Inter'; ctx.textAlign = 'center'; ctx.fillText(Math.round(bpm), boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 38);
+        ctx.font = '300 0.5rem Inter'; ctx.globalAlpha = 0.4; ctx.fillText('BPM', boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 52); ctx.globalAlpha = 1;
+        bpm += (targetBPM - bpm) * 0.01; const now = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
+        if(isGaming) bpmHistory.push(bpm);
+        let yOffset = 0; let t = now - lastBeatTime; if (t > beatInterval) { lastBeatTime = now; }
+        if (t < 100) yOffset = -Math.sin((t/100) * Math.PI) * 4; else if (t < 175) yOffset = 4; else if (t < 200) yOffset = -35; else if (t < 225) yOffset = 8; else if (t < 400) yOffset = -Math.sin(((t-225)/175) * Math.PI) * 6;
+        ecgPoints.push({x: ecgX, y: baselineY + yOffset}); if (ecgPoints.length > 90) ecgPoints.shift();
+        ctx.beginPath(); ctx.shadowBlur = 10; ctx.shadowColor = currentMode.color; ctx.strokeStyle = currentMode.color; ctx.lineWidth = 2;
+        let lastX = -1; for(let i = 0; i < ecgPoints.length; i++) { const p = ecgPoints[i]; if (p.x < lastX) { ctx.stroke(); ctx.beginPath(); ctx.moveTo(boxX + p.x, p.y); }
+            ctx.globalAlpha = Math.max(0.15, i / ecgPoints.length); const screenX = boxX + p.x; if (i === 0 || p.x < lastX) ctx.moveTo(screenX, p.y); else ctx.lineTo(screenX, p.y); lastX = p.x; }
+        ctx.stroke(); ctx.restore();
+    }
+
+    function animate() {
+        ctx.fillStyle = '#01060b'; ctx.fillRect(0, 0, width, height);
+        const cX = width / 2; const cY = isGaming ? height * 0.45 : height * 0.5;
+        let color;
+
+        // PULSATION LOGIC
+        const softPulse = Math.sin(Date.now() / 1000) * 16; // Very soft pulsation
+
+        if (isGaming && currentMode) { color = currentMode.color; orbSize += (targetSize - orbSize) * 0.02; } 
+        else { menuHue = (menuHue + 0.04) % 360; color = `hsl(${menuHue}, 50%, 50%)`; orbSize = 140; }
+        
+        ctx.save(); ctx.filter = 'blur(120px)'; 
+        ctx.fillStyle = color.startsWith('hsl') ? color.replace('hsl', 'hsla').replace(')', ', 0.5)') : color + '80';
+        ctx.beginPath(); 
+        // Applying soft pulsation to the radius
+        ctx.arc(cX, cY, Math.max(0, orbSize + softPulse), 0, Math.PI * 2); 
+        ctx.fill();
+        ctx.fillStyle = color; 
+        ctx.beginPath(); 
+        ctx.arc(cX, cY, Math.max(0, (orbSize * 0.4) + (softPulse * 0.5)), 0, Math.PI * 2); 
+        ctx.fill();
+        ctx.restore();
+        
+        if (isGaming) drawECG(cX);
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
+</body>
+</html>
