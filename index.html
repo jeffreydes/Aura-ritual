@@ -413,7 +413,6 @@
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
         
-        // Context-sensitive stop button label
         document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
 
         document.getElementById('dashboard').classList.remove('active');
@@ -476,23 +475,39 @@
     async function runSequence(index, sessionID) {
         if (!isGaming || !currentMode || sessionID !== activeSessionID) return;
         const step = currentMode.sequence[index % currentMode.sequence.length];
-        document.getElementById('instruction').innerText = step.a; targetSize = step.s; targetBPM = step.b;
+        document.getElementById('instruction').innerText = step.a; 
+        targetSize = step.s; 
+        targetBPM = step.b;
+
         let stepRemaining = step.t / 1000;
+        
+        // Immediate UI update so it doesn't wait 1s to show the starting number
+        if (!currentMode.isTest) {
+            document.getElementById('sub-instruction').innerText = stepRemaining + "s";
+        }
+
         const stepTimer = setInterval(() => {
             if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
+            
             if (currentMode.isTest) {
                 document.getElementById('sub-instruction').innerText = Math.floor(totalElapsed) + "s";
             } else {
                 stepRemaining--;
-                if (stepRemaining >= 0) document.getElementById('sub-instruction').innerText = Math.max(0, Math.floor(stepRemaining)) + "s";
+                // Fix: only update if > 0 so it transitions at 1s instead of showing 0s
+                if (stepRemaining > 0) {
+                    document.getElementById('sub-instruction').innerText = stepRemaining + "s";
+                }
             }
+
             const progress = currentMode.isTest ? Math.min(1, totalElapsed / 60) : Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
             ticks.forEach((t, i) => { t.classList.toggle('active', i < activeCount); });
+            
             if(!currentMode.isTest && totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
         }, 1000);
+
         await new Promise(r => setTimeout(r, step.t)); 
         clearInterval(stepTimer);
         if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
