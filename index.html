@@ -210,7 +210,7 @@
             <div class="config-row">
                 <span style="font-size: 0.65rem; font-weight: 300; letter-spacing: 2px; color: rgba(255,255,255,0.4); text-transform: uppercase;">Duration</span>
                 <div class="toggle-group">
-                    <button class="toggle-btn active" onclick="setDuration(30, this)">30s</button>
+                    <button class="toggle-btn active" id="dur-30s" onclick="setDuration(30, this)">30s</button>
                     <button class="toggle-btn" id="dur-1m" onclick="setDuration(60, this)">1m</button>
                     <button class="toggle-btn" id="dur-2m" onclick="setDuration(120, this)">2m</button>
                 </div>
@@ -291,7 +291,7 @@
     }
 
     let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0, holdHistory: [], longestHold: 0 };
-    let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
+    let sessionDuration = 30, chosenDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
 
@@ -314,6 +314,7 @@
 
     function setDuration(sec, btn) {
         if(!stats.isPro && sec > 30) { alert("Aura Pro required for sessions longer than 30s."); toggleProgress(); return; }
+        chosenDuration = sec;
         sessionDuration = sec;
         document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -403,16 +404,21 @@
     function startMode(modeKey) {
         const premiumModes = ['relax', 'steady'];
         if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
+        
         const modes = {
             box: { title: "BOX BREATH", explainer: "Resetting rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
             relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
             steady: { title: "COHERENCE BREATH", explainer: "Harmonizing rhythms.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 },
-            hold_test: { title: "HOLD TEST", isTest: true, sequence: [{a:'HOLD',t:600000,s:130,b:60}], color: '#ffffff', freq: 432 }
+            hold_test: { title: "HOLD TEST", isTest: true, sequence: [{a:'HOLD',t:3600000,s:130,b:60}], color: '#ffffff', freq: 432 }
         };
+        
         activeSessionID++; 
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
         
+        // Reset session duration if it's a test vs normal mode
+        sessionDuration = currentMode.isTest ? 60 : chosenDuration;
+
         document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
 
         document.getElementById('dashboard').classList.remove('active');
@@ -481,7 +487,7 @@
 
         let stepRemaining = step.t / 1000;
         
-        // Immediate UI update so it doesn't wait 1s to show the starting number
+        // Show initial time immediately
         if (!currentMode.isTest) {
             document.getElementById('sub-instruction').innerText = stepRemaining + "s";
         }
@@ -494,12 +500,12 @@
                 document.getElementById('sub-instruction').innerText = Math.floor(totalElapsed) + "s";
             } else {
                 stepRemaining--;
-                // Fix: only update if > 0 so it transitions at 1s instead of showing 0s
                 if (stepRemaining > 0) {
                     document.getElementById('sub-instruction').innerText = stepRemaining + "s";
                 }
             }
 
+            // Progress bar handling
             const progress = currentMode.isTest ? Math.min(1, totalElapsed / 60) : Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
