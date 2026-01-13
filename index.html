@@ -210,9 +210,9 @@
             <div class="config-row">
                 <span style="font-size: 0.65rem; font-weight: 300; letter-spacing: 2px; color: rgba(255,255,255,0.4); text-transform: uppercase;">Duration</span>
                 <div class="toggle-group">
-                    <button class="toggle-btn active" id="dur-30s" onclick="setDuration(30, this)">30s</button>
-                    <button class="toggle-btn" id="dur-1m" onclick="setDuration(60, this)">1m</button>
+                    <button class="toggle-btn active" id="dur-1m" onclick="setDuration(60, this)">1m</button>
                     <button class="toggle-btn" id="dur-2m" onclick="setDuration(120, this)">2m</button>
+                    <button class="toggle-btn" id="dur-5m" onclick="setDuration(300, this)">5m</button>
                 </div>
             </div>
 
@@ -291,7 +291,7 @@
     }
 
     let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0, holdHistory: [], longestHold: 0 };
-    let sessionDuration = 30, chosenDuration = 30, sessionStartTime = 0, bpmHistory = [];
+    let sessionDuration = 60, chosenDuration = 60, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
 
@@ -313,7 +313,8 @@
     });
 
     function setDuration(sec, btn) {
-        if(!stats.isPro && sec > 30) { alert("Aura Pro required for sessions longer than 30s."); toggleProgress(); return; }
+        // Allow 60s (1m) as free tier. Longer sessions require Pro.
+        if(!stats.isPro && sec > 60) { alert("Aura Pro required for sessions longer than 1m."); toggleProgress(); return; }
         chosenDuration = sec;
         sessionDuration = sec;
         document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -416,7 +417,7 @@
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
         
-        // Reset session duration if it's a test vs normal mode
+        // Ensure regular modes use the duration from the toggle buttons
         sessionDuration = currentMode.isTest ? 60 : chosenDuration;
 
         document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
@@ -487,7 +488,6 @@
 
         let stepRemaining = step.t / 1000;
         
-        // Show initial time immediately
         if (!currentMode.isTest) {
             document.getElementById('sub-instruction').innerText = stepRemaining + "s";
         }
@@ -505,7 +505,6 @@
                 }
             }
 
-            // Progress bar handling
             const progress = currentMode.isTest ? Math.min(1, totalElapsed / 60) : Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
