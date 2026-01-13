@@ -136,7 +136,6 @@
         .progress-bar-tick { width: 3px; height: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; transition: all 0.3s ease; }
         .progress-bar-tick.active { background: #ffffff; height: 20px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
 
-        /* Reminder Styles */
         .reminder-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 20px; border-radius: 20px; text-align: left; margin-top: 15px; display: flex; flex-direction: column; gap: 15px; }
         .reminder-header { display: flex; justify-content: space-between; align-items: center; }
         .reminder-time-input { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 10px; font-family: inherit; font-size: 0.9rem; outline: none; width: 100px; text-align: center; }
@@ -255,7 +254,7 @@
                         <div class="m-icon rect"></div>
                         <b>BOX BREATH</b>
                     </div>
-                    <span>Equal parts inhalation, retention, and release.</span>
+                    <span>4-4-4-4. Reset your nervous system. Gain focus and quiet mental noise.</span>
                 </button>
                 <button class="mode-card" id="mode-relax" onclick="startMode('relax')">
                     <div class="mode-header">
@@ -263,7 +262,7 @@
                         <b>RELAXATION BREATH</b>
                         <span class="pro-lock-tag">PRO</span>
                     </div>
-                    <span>Extension of the exhale to trigger deep relief.</span>
+                    <span>4-7-8. Calm your autonomic nervous system.</span>
                 </button>
                 <button class="mode-card" id="mode-steady" onclick="startMode('steady')">
                     <div class="mode-header">
@@ -271,14 +270,14 @@
                         <b>COHERENCE BREATH</b>
                         <span class="pro-lock-tag">PRO</span>
                     </div>
-                    <span>Rhythmic balance to align heart and mind.</span>
+                    <span>5-5. Harmonize your heart and mind.</span>
                 </button>
                 <button class="mode-card" onclick="startMode('hold_test')">
                     <div class="mode-header">
                         <div class="m-icon diamond"></div>
                         <b>BREATH HOLD TEST</b>
                     </div>
-                    <span>Measure your lung capacity and track progress.</span>
+                    <span>Test your capacity.</span>
                 </button>
             </div>
 
@@ -315,7 +314,6 @@
         deferredPrompt = null;
     }
 
-    // UPDATED STATS OBJECT WITH REMINDERS
     let stats = JSON.parse(localStorage.getItem('aura_stats')) || { 
         streak: 0, 
         lastDate: null, 
@@ -355,7 +353,6 @@
         }
     });
 
-    // SMART REMINDER LOGIC
     function initRemindersUI() {
         const toggle = document.getElementById('reminder-toggle');
         const timeInput = document.getElementById('reminder-time');
@@ -398,20 +395,14 @@
 
     function checkRitualReminder() {
         if (!stats.reminderEnabled) return;
-        
-        // Simple logic: check if reminder time matches current hour/min and hasn't been completed today
         const now = new Date();
         const [targetH, targetM] = stats.reminderTime.split(':').map(Number);
         const todayStr = now.toDateString();
-
-        // If it's currently the reminder time or later, and the user hasn't done a ritual today
         if (now.getHours() >= targetH && now.getMinutes() >= targetM) {
             if (stats.lastDate !== todayStr) {
                 sendNotification("Time for your Ritual", "Step into the center. Your aura awaits.");
             }
         }
-
-        // Keep checking every minute while app is open
         setTimeout(checkRitualReminder, 60000);
     }
 
@@ -421,7 +412,6 @@
         }
     }
 
-    // ORIGINAL CORE LOGIC
     function setDuration(sec, btn) {
         if(!stats.isPro && sec > 60) { alert("Aura Pro required for sessions longer than 1m."); toggleProgress(); return; }
         chosenDuration = sec;
@@ -514,19 +504,16 @@
     function startMode(modeKey) {
         const premiumModes = ['relax', 'steady'];
         if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
-        
         const modes = {
             box: { title: "BOX BREATH", explainer: "Resetting rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
             relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
             steady: { title: "COHERENCE BREATH", explainer: "Harmonizing rhythms.", sequence: [{a:'Inhale',t:5000,s:180,b:75},{a:'Exhale',t:5000,s:80,b:55}], color: '#2dd4bf', freq: 432 },
             hold_test: { title: "HOLD TEST", isTest: true, sequence: [{a:'HOLD',t:3600000,s:130,b:60}], color: '#ffffff', freq: 432 }
         };
-        
         activeSessionID++; 
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
         sessionDuration = currentMode.isTest ? 60 : chosenDuration;
-
         document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
         document.getElementById('dashboard').classList.remove('active');
         setTimeout(() => { 
@@ -546,10 +533,8 @@
         if (!isGaming) return;
         isGaming = false;
         activeSessionID++; 
-        
         const elapsedSec = Math.floor((Date.now() - sessionStartTime) / 1000);
         if(audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
-        
         const todayStr = new Date().toDateString();
         if (sessionStartTime > 0) {
             if (stats.lastDate !== todayStr) { 
@@ -569,10 +554,8 @@
             stats.totalSessions++; 
             localStorage.setItem('aura_stats', JSON.stringify(stats));
         }
-        
         document.getElementById('game-ui').classList.remove('active');
         const avgBpm = (bpmHistory && bpmHistory.length > 0) ? Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) : stats.restingBPM;
-        
         if (currentMode.isTest) {
             document.getElementById('summary-streak').innerText = `${elapsedSec}s hold`;
             document.getElementById('summary-bpm').innerText = `Best: ${stats.longestHold}s`;
@@ -591,10 +574,8 @@
         document.getElementById('instruction').innerText = step.a; 
         targetSize = step.s; 
         targetBPM = step.b;
-
         let stepRemaining = step.t / 1000;
         if (!currentMode.isTest) document.getElementById('sub-instruction').innerText = stepRemaining + "s";
-
         const stepTimer = setInterval(() => {
             if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
@@ -610,7 +591,6 @@
             ticks.forEach((t, i) => { t.classList.toggle('active', i < activeCount); });
             if(!currentMode.isTest && totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
         }, 1000);
-
         await new Promise(r => setTimeout(r, step.t)); 
         clearInterval(stepTimer);
         if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
