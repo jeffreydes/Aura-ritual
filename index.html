@@ -14,7 +14,8 @@
             --surface: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
             --accent: #ffffff;
-            --gold: #d4af37; 
+            --gold: #d4af37;
+            --teal: #2dd4bf; 
             --text-main: #ffffff; 
             --glass: blur(25px);
             --safe-top: env(safe-area-inset-top, 20px);
@@ -94,6 +95,16 @@
         .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.1); }
         .dot.active { background: #ffffff; box-shadow: 0 0 15px #ffffff; }
 
+        .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: 30px; padding: 25px; backdrop-filter: var(--glass); margin-bottom: 25px; margin-top: 10px; }
+        .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 25px; }
+        .chart-title { font-size: 0.7rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+        .chart-subtitle { font-size: 0.7rem; font-weight: 300; color: var(--teal); }
+        .bar-chart { display: flex; justify-content: space-between; align-items: flex-end; height: 150px; padding-top: 20px; }
+        .bar-group { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; }
+        .bar { width: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; transition: height 0.5s ease; }
+        .bar.active { background: var(--teal); box-shadow: 0 0 15px var(--teal); }
+        .bar-label { font-size: 0.6rem; color: rgba(255,255,255,0.6); font-weight: 300; }
+
         .modes-grid { display: grid; gap: 15px; width: 100%; }
         .mode-card { background: var(--surface); border: 1px solid var(--border); padding: 28px; border-radius: 30px; cursor: pointer; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); backdrop-filter: var(--glass); text-align: left; color: inherit; width: 100%; box-sizing: border-box; }
         .mode-card:hover { border-color: #ffffff; transform: translateY(-3px); }
@@ -107,7 +118,10 @@
         #exit-btn { position: absolute; top: var(--safe-top); right: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); color: white; padding: 10px 22px; border-radius: 40px; cursor: pointer; font-size: 0.7rem; transition: 0.3s; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
         #session-timer { position: absolute; top: var(--safe-top); left: 25px; color: white; font-weight: 100; font-size: 0.8rem; letter-spacing: 2px; opacity: 0.6; pointer-events: none; }
 
-        /* Install Button Style */
+        #session-progress-tracker { position: absolute; bottom: calc(var(--safe-bottom) + 120px); display: flex; gap: 4px; height: 20px; align-items: flex-end; z-index: 205; }
+        .progress-bar-tick { width: 3px; height: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; transition: all 0.3s ease; }
+        .progress-bar-tick.active { background: #ffffff; height: 20px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+
         #install-row { display: none; margin-top: 20px; }
     </style>
 </head>
@@ -191,11 +205,20 @@
                     <span>Rhythmic balance to align heart and mind.</span>
                 </button>
             </div>
+
+            <section class="chart-container">
+                <div class="chart-header">
+                    <span class="chart-title">Weekly Minutes</span>
+                    <span id="weekly-total" class="chart-subtitle">0 min total</span>
+                </div>
+                <div class="bar-chart" id="weekly-chart"></div>
+            </section>
         </div>
     </div>
 
     <div id="game-ui">
         <div id="session-timer">00:00</div>
+        <div id="session-progress-tracker"></div>
         <button id="exit-btn" onclick="endSession()">Exit</button>
         <div id="instruction">Focus</div>
         <div id="sub-instruction">Ready</div>
@@ -204,12 +227,10 @@
     <canvas id="canvas"></canvas>
 
 <script>
-    // --- 2. SERVICE WORKER REGISTRATION ---
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js');
     }
 
-    // --- 3. INSTALLATION LOGIC ---
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
@@ -227,7 +248,7 @@
         deferredPrompt = null;
     }
 
-    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false };
+    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], dailyMinutes: {}, restingBPM: 60, isPro: false };
     let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
@@ -317,7 +338,18 @@
         }
     }
 
-    function startMode(modeKey) {
+    function initProgressBars() {
+        const container = document.getElementById('session-progress-tracker');
+        container.innerHTML = '';
+        const barCount = 30; 
+        for(let i = 0; i < barCount; i++) {
+            const tick = document.createElement('div');
+            tick.className = 'progress-bar-tick';
+            container.appendChild(tick);
+        }
+    }
+
+    async function startMode(modeKey) {
         const premiumModes = ['relax', 'steady'];
         if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
         const modes = {
@@ -327,19 +359,39 @@
         };
         activeSessionID++; const currentID = activeSessionID; currentMode = modes[modeKey];
         document.getElementById('dashboard').classList.remove('active');
-        setTimeout(() => { playIntro(currentMode.title, currentMode.explainer, 3800, () => {
-                if (currentID !== activeSessionID) return; isGaming = true; sessionStartTime = Date.now(); bpmHistory = [];
-                orbSize = 80; targetSize = currentMode.sequence[0].s; targetBPM = currentMode.sequence[0].b;
-                document.getElementById('game-ui').classList.add('active'); setupAudio(currentMode.freq); runSequence(0, currentID);
+        
+        setTimeout(() => { 
+            playIntro(currentMode.title, currentMode.explainer, 3800, async () => {
+                if (currentID !== activeSessionID) return; 
+                isGaming = true; sessionStartTime = 0; bpmHistory = [];
+                orbSize = 80; targetSize = 80; targetBPM = stats.restingBPM;
+                initProgressBars();
+                document.getElementById('game-ui').classList.add('active');
+                
+                // Countdown Logic 3-2-1
+                const instr = document.getElementById('instruction');
+                const subInstr = document.getElementById('sub-instruction');
+                subInstr.innerText = "Prepare";
+                for(let i = 3; i > 0; i--) {
+                    if (currentID !== activeSessionID) return;
+                    instr.innerText = i;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                
+                sessionStartTime = Date.now();
+                setupAudio(currentMode.freq); 
+                runSequence(0, currentID);
             });
         }, 500);
     }
 
     function endSession() {
         activeSessionID++; if(audioCtx) { audioCtx.close(); audioCtx = null; }
-        const today = new Date().toDateString();
-        if (stats.lastDate !== today) { const yesterday = new Date(Date.now() - 86400000).toDateString(); stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; stats.lastDate = today; if(!stats.history.includes(today)) stats.history.push(today); }
-        stats.totalSessions++; localStorage.setItem('aura_stats', JSON.stringify(stats));
+        const todayStr = new Date().toDateString();
+        if (stats.lastDate !== todayStr) { const yesterday = new Date(Date.now() - 86400000).toDateString(); stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; stats.lastDate = todayStr; if(!stats.history.includes(todayStr)) stats.history.push(todayStr); }
+        stats.totalSessions++; 
+        stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + Math.ceil(sessionDuration / 60);
+        localStorage.setItem('aura_stats', JSON.stringify(stats));
         isGaming = false; document.getElementById('game-ui').classList.remove('active');
         const avgBpm = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) || stats.restingBPM;
         document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
@@ -359,6 +411,15 @@
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
             const sessionLeft = Math.max(0, Math.ceil(sessionDuration - totalElapsed));
             document.getElementById('session-timer').innerText = `${Math.floor(sessionLeft / 60)}:${(sessionLeft % 60).toString().padStart(2, '0')}`;
+            
+            const progress = totalElapsed / sessionDuration;
+            const ticks = document.querySelectorAll('.progress-bar-tick');
+            const activeCount = Math.floor(progress * ticks.length);
+            ticks.forEach((t, i) => {
+                if (i < activeCount) t.classList.add('active');
+                else t.classList.remove('active');
+            });
+
             if(totalElapsed >= sessionDuration) endSession();
         }, 1000);
         await new Promise(r => setTimeout(r, step.t)); clearInterval(stepTimer);
@@ -368,10 +429,40 @@
     function setupAudio(baseFreq) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); const createOsc = (f, gv) => { const osc = audioCtx.createOscillator(); const g = audioCtx.createGain(); osc.frequency.setValueAtTime(f, audioCtx.currentTime); g.gain.setValueAtTime(0, audioCtx.currentTime); g.gain.linearRampToValueAtTime(gv, audioCtx.currentTime + 3); osc.connect(g).connect(audioCtx.destination); osc.start(); }; createOsc(baseFreq, 0.04); createOsc(baseFreq * 0.5, 0.02); } catch(e) {} }
 
     function renderDashboard() {
-        document.getElementById('streak-count').innerText = stats.streak; document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; document.getElementById('display-name').innerText = stats.userName;
+        document.getElementById('streak-count').innerText = stats.streak; document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; document.getElementById('display-name').innerHTML = stats.isPro ? `${stats.userName}<span class="pro-badge-main">PRO</span>` : stats.userName;
+        
         const track = document.getElementById('week-track'); track.innerHTML = '';
         const today = new Date().getDay();
-        ['S','M','T','W','T','F','S'].forEach((d, i) => { track.innerHTML += `<div class="day-dot"><div class="dot ${i === today ? 'active' : ''}"></div>${d}</div>`; });
+        const days = ['S','M','T','W','T','F','S'];
+        days.forEach((d, i) => { track.innerHTML += `<div class="day-dot"><div class="dot ${i === today ? 'active' : ''}"></div>${d}</div>`; });
+
+        const chart = document.getElementById('weekly-chart'); chart.innerHTML = '';
+        const now = new Date();
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); 
+        let weeklyTotal = 0;
+        let maxMinutes = 0;
+        const weeklyData = [];
+
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toDateString();
+            const minutes = stats.dailyMinutes[dateStr] || 0;
+            weeklyData.push({ day: days[date.getDay()], minutes: minutes });
+            weeklyTotal += minutes;
+            if (minutes > maxMinutes) maxMinutes = minutes;
+        }
+
+        document.getElementById('weekly-total').innerText = `${weeklyTotal} min total`;
+
+        weeklyData.forEach(data => {
+            const heightPercentage = maxMinutes > 0 ? (data.minutes / maxMinutes) * 100 : 0;
+            chart.innerHTML += `
+                <div class="bar-group">
+                    <div class="bar ${data.minutes > 0 ? 'active' : ''}" style="height: ${Math.max(heightPercentage, 2)}%"></div>
+                    <div class="bar-label">${data.day}</div>
+                </div>`;
+        });
     }
 
     const canvas = document.getElementById('canvas'); const ctx = canvas.getContext('2d');
@@ -389,11 +480,11 @@
         ctx.fillStyle = '#ffffff'; ctx.font = '100 1.2rem Inter'; ctx.textAlign = 'center'; ctx.fillText(Math.round(bpm), boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 38);
         ctx.font = '300 0.5rem Inter'; ctx.globalAlpha = 0.4; ctx.fillText('BPM', boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 52); ctx.globalAlpha = 1;
         bpm += (targetBPM - bpm) * 0.01; const now = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
-        if(isGaming) bpmHistory.push(bpm);
+        if(isGaming && sessionStartTime > 0) bpmHistory.push(bpm);
         let yOffset = 0; let t = now - lastBeatTime; if (t > beatInterval) { lastBeatTime = now; }
         if (t < 100) yOffset = -Math.sin((t/100) * Math.PI) * 4; else if (t < 175) yOffset = 4; else if (t < 200) yOffset = -35; else if (t < 225) yOffset = 8; else if (t < 400) yOffset = -Math.sin(((t-225)/175) * Math.PI) * 6;
         ecgPoints.push({x: ecgX, y: baselineY + yOffset}); if (ecgPoints.length > 90) ecgPoints.shift();
-        ctx.beginPath(); ctx.shadowBlur = 10; ctx.shadowColor = currentMode.color; ctx.strokeStyle = currentMode.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.shadowBlur = 10; ctx.shadowColor = currentMode ? currentMode.color : '#fff'; ctx.strokeStyle = currentMode ? currentMode.color : '#fff'; ctx.lineWidth = 2;
         let lastX = -1; for(let i = 0; i < ecgPoints.length; i++) { const p = ecgPoints[i]; if (p.x < lastX) { ctx.stroke(); ctx.beginPath(); ctx.moveTo(boxX + p.x, p.y); }
             ctx.globalAlpha = Math.max(0.15, i / ecgPoints.length); const screenX = boxX + p.x; if (i === 0 || p.x < lastX) ctx.moveTo(screenX, p.y); else ctx.lineTo(screenX, p.y); lastX = p.x; }
         ctx.stroke(); ctx.restore();
