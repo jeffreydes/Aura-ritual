@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Aura | Personal Ritual</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#01060b">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;600&display=swap');
 
@@ -98,20 +100,15 @@
         .mode-card b { display: block; font-size: 1.1rem; letter-spacing: 2px; font-weight: 200; text-transform: uppercase; }
         .mode-card span { color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 300; line-height: 1.6; }
 
-        #game-ui { 
-            position: fixed; inset: 0; z-index: 200; 
-            display: flex; flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            opacity: 0; pointer-events: none; transition: opacity 1.5s ease; background: transparent; text-align: center; 
-            padding-bottom: 10vh; 
-        }
+        #game-ui { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 1.5s ease; background: transparent; text-align: center; padding-bottom: 10vh; }
         #game-ui.active { opacity: 1; pointer-events: auto; }
         #instruction { font-size: clamp(4rem, 16vw, 10rem); font-weight: 100; letter-spacing: 20px; text-transform: uppercase; margin-bottom: 10px; color: #ffffff; }
         #sub-instruction { font-size: 2rem; color: #ffffff; letter-spacing: 8px; font-weight: 100; }
-        
         #exit-btn { position: absolute; top: var(--safe-top); right: 25px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); color: white; padding: 10px 22px; border-radius: 40px; cursor: pointer; font-size: 0.7rem; transition: 0.3s; z-index: 100; text-transform: uppercase; letter-spacing: 1px; }
         #session-timer { position: absolute; top: var(--safe-top); left: 25px; color: white; font-weight: 100; font-size: 0.8rem; letter-spacing: 2px; opacity: 0.6; pointer-events: none; }
+
+        /* Install Button Style */
+        #install-row { display: none; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -135,6 +132,11 @@
             </div>
 
             <div style="margin-top: 30px; font-size: 0.6rem; color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; cursor: pointer; display: inline-block;" onclick="calibrateBPM()">Calibrate resting bpm</div>
+            
+            <div id="install-row">
+                <button class="btn-minimal" onclick="installApp()" style="margin-top: 20px;">Install Aura App</button>
+            </div>
+
             <button class="btn-minimal" style="margin-top: 40px;" onclick="toggleProgress()">Back</button>
         </div>
     </div>
@@ -202,6 +204,29 @@
     <canvas id="canvas"></canvas>
 
 <script>
+    // --- 2. SERVICE WORKER REGISTRATION ---
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+
+    // --- 3. INSTALLATION LOGIC ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('install-row').style.display = 'block';
+    });
+
+    async function installApp() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            document.getElementById('install-row').style.display = 'none';
+        }
+        deferredPrompt = null;
+    }
+
     let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false };
     let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
@@ -378,25 +403,14 @@
         ctx.fillStyle = '#01060b'; ctx.fillRect(0, 0, width, height);
         const cX = width / 2; const cY = isGaming ? height * 0.45 : height * 0.5;
         let color;
-
-        // PULSATION LOGIC
-        const softPulse = Math.sin(Date.now() / 1000) * 16; // Very soft pulsation
-
+        const softPulse = Math.sin(Date.now() / 1000) * 16; 
         if (isGaming && currentMode) { color = currentMode.color; orbSize += (targetSize - orbSize) * 0.02; } 
         else { menuHue = (menuHue + 0.04) % 360; color = `hsl(${menuHue}, 50%, 50%)`; orbSize = 140; }
-        
         ctx.save(); ctx.filter = 'blur(120px)'; 
         ctx.fillStyle = color.startsWith('hsl') ? color.replace('hsl', 'hsla').replace(')', ', 0.5)') : color + '80';
-        ctx.beginPath(); 
-        // Applying soft pulsation to the radius
-        ctx.arc(cX, cY, Math.max(0, orbSize + softPulse), 0, Math.PI * 2); 
-        ctx.fill();
-        ctx.fillStyle = color; 
-        ctx.beginPath(); 
-        ctx.arc(cX, cY, Math.max(0, (orbSize * 0.4) + (softPulse * 0.5)), 0, Math.PI * 2); 
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(cX, cY, Math.max(0, orbSize + softPulse), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cX, cY, Math.max(0, (orbSize * 0.4) + (softPulse * 0.5)), 0, Math.PI * 2); ctx.fill();
         ctx.restore();
-        
         if (isGaming) drawECG(cX);
         requestAnimationFrame(animate);
     }
