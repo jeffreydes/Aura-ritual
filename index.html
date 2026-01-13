@@ -43,7 +43,7 @@
         }
         .overlay.active { opacity: 1; visibility: visible; }
         
-        .content-box { width: 100%; max-width: 400px; text-align: center; }
+        .content-box { width: 100%; max-width: 400px; text-align: center; overflow-y: auto; max-height: 90vh; }
         .stat-group { margin-bottom: 35px; width: 100%; }
         .stat-label { font-size: 0.7rem; font-weight: 200; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
         .stat-value { font-size: 2.2rem; font-weight: 100; }
@@ -136,6 +136,17 @@
         .progress-bar-tick { width: 3px; height: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; transition: all 0.3s ease; }
         .progress-bar-tick.active { background: #ffffff; height: 20px; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
 
+        /* Reminder Styles */
+        .reminder-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 20px; border-radius: 20px; text-align: left; margin-top: 15px; display: flex; flex-direction: column; gap: 15px; }
+        .reminder-header { display: flex; justify-content: space-between; align-items: center; }
+        .reminder-time-input { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; padding: 8px 12px; border-radius: 10px; font-family: inherit; font-size: 0.9rem; outline: none; width: 100px; text-align: center; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--teal); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
         #install-row { display: none; margin-top: 20px; }
     </style>
 </head>
@@ -170,6 +181,20 @@
                     <div class="comp-card">
                         <span class="comp-label">Mindful Mins</span>
                         <div id="comp-mins" class="comp-val">0</div>
+                    </div>
+                </div>
+
+                <div class="reminder-card">
+                    <div class="reminder-header">
+                        <span class="comp-label" style="margin:0;">Daily Ritual Nudge</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="reminder-toggle" onchange="toggleReminder(this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="reminder-settings" style="display: flex; justify-content: space-between; align-items: center; opacity: 0.5; pointer-events: none; transition: 0.3s;">
+                        <span style="font-size: 0.75rem; font-weight: 300; color: rgba(255,255,255,0.6);">Set Preferred Time</span>
+                        <input type="time" id="reminder-time" class="reminder-time-input" onchange="updateReminderTime(this.value)">
                     </div>
                 </div>
             </div>
@@ -290,7 +315,23 @@
         deferredPrompt = null;
     }
 
-    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], restingBPM: 60, isPro: false, dailyMinutes: {}, bestStreak: 0, holdHistory: [], longestHold: 0 };
+    // UPDATED STATS OBJECT WITH REMINDERS
+    let stats = JSON.parse(localStorage.getItem('aura_stats')) || { 
+        streak: 0, 
+        lastDate: null, 
+        totalSessions: 0, 
+        userName: null, 
+        history: [], 
+        restingBPM: 60, 
+        isPro: false, 
+        dailyMinutes: {}, 
+        bestStreak: 0, 
+        holdHistory: [], 
+        longestHold: 0,
+        reminderEnabled: false,
+        reminderTime: "08:00"
+    };
+
     let sessionDuration = 60, chosenDuration = 60, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
     let ecgX = 0, ecgPoints = [], bpm = 60, targetBPM = 60, lastBeatTime = 0, menuHue = 0;
@@ -300,20 +341,88 @@
     const introSubtitle = document.getElementById('intro-subtitle');
 
     window.addEventListener('DOMContentLoaded', () => {
+        initRemindersUI();
         if (stats.userName) {
             document.getElementById('name-input-container').style.display = 'none';
             playIntro(`Welcome back, ${stats.userName}`, "", 3000, () => {
                 document.getElementById('dashboard').classList.add('active');
                 renderDashboard();
                 renderProUI();
+                checkRitualReminder();
             });
         } else {
             setTimeout(() => document.getElementById('name-input-container').classList.add('visible'), 600);
         }
     });
 
+    // SMART REMINDER LOGIC
+    function initRemindersUI() {
+        const toggle = document.getElementById('reminder-toggle');
+        const timeInput = document.getElementById('reminder-time');
+        toggle.checked = stats.reminderEnabled;
+        timeInput.value = stats.reminderTime || "08:00";
+        updateReminderUIState(stats.reminderEnabled);
+    }
+
+    function toggleReminder(enabled) {
+        if (enabled && Notification.permission !== "granted") {
+            Notification.requestPermission().then(permission => {
+                if (permission !== "granted") {
+                    document.getElementById('reminder-toggle').checked = false;
+                    alert("Aura needs notification access to send reminders.");
+                    return;
+                }
+                saveReminderSettings(true);
+            });
+        } else {
+            saveReminderSettings(enabled);
+        }
+    }
+
+    function updateReminderTime(time) {
+        stats.reminderTime = time;
+        saveReminderSettings(stats.reminderEnabled);
+    }
+
+    function saveReminderSettings(enabled) {
+        stats.reminderEnabled = enabled;
+        updateReminderUIState(enabled);
+        localStorage.setItem('aura_stats', JSON.stringify(stats));
+    }
+
+    function updateReminderUIState(enabled) {
+        const settings = document.getElementById('reminder-settings');
+        settings.style.opacity = enabled ? "1" : "0.5";
+        settings.style.pointerEvents = enabled ? "auto" : "none";
+    }
+
+    function checkRitualReminder() {
+        if (!stats.reminderEnabled) return;
+        
+        // Simple logic: check if reminder time matches current hour/min and hasn't been completed today
+        const now = new Date();
+        const [targetH, targetM] = stats.reminderTime.split(':').map(Number);
+        const todayStr = now.toDateString();
+
+        // If it's currently the reminder time or later, and the user hasn't done a ritual today
+        if (now.getHours() >= targetH && now.getMinutes() >= targetM) {
+            if (stats.lastDate !== todayStr) {
+                sendNotification("Time for your Ritual", "Step into the center. Your aura awaits.");
+            }
+        }
+
+        // Keep checking every minute while app is open
+        setTimeout(checkRitualReminder, 60000);
+    }
+
+    function sendNotification(title, body) {
+        if (Notification.permission === "granted") {
+            new Notification(title, { body: body, icon: '/icon.png' });
+        }
+    }
+
+    // ORIGINAL CORE LOGIC
     function setDuration(sec, btn) {
-        // Allow 60s (1m) as free tier. Longer sessions require Pro.
         if(!stats.isPro && sec > 60) { alert("Aura Pro required for sessions longer than 1m."); toggleProgress(); return; }
         chosenDuration = sec;
         sessionDuration = sec;
@@ -416,12 +525,9 @@
         activeSessionID++; 
         const currentID = activeSessionID; 
         currentMode = modes[modeKey];
-        
-        // Ensure regular modes use the duration from the toggle buttons
         sessionDuration = currentMode.isTest ? 60 : chosenDuration;
 
         document.getElementById('exit-btn').innerText = currentMode.isTest ? "STOP HOLD" : "EXIT";
-
         document.getElementById('dashboard').classList.remove('active');
         setTimeout(() => { 
             playIntro(currentMode.title, currentMode.explainer || "", 3800, () => {
@@ -487,29 +593,21 @@
         targetBPM = step.b;
 
         let stepRemaining = step.t / 1000;
-        
-        if (!currentMode.isTest) {
-            document.getElementById('sub-instruction').innerText = stepRemaining + "s";
-        }
+        if (!currentMode.isTest) document.getElementById('sub-instruction').innerText = stepRemaining + "s";
 
         const stepTimer = setInterval(() => {
             if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
-            
             if (currentMode.isTest) {
                 document.getElementById('sub-instruction').innerText = Math.floor(totalElapsed) + "s";
             } else {
                 stepRemaining--;
-                if (stepRemaining > 0) {
-                    document.getElementById('sub-instruction').innerText = stepRemaining + "s";
-                }
+                if (stepRemaining > 0) document.getElementById('sub-instruction').innerText = stepRemaining + "s";
             }
-
             const progress = currentMode.isTest ? Math.min(1, totalElapsed / 60) : Math.min(1, totalElapsed / sessionDuration);
             const ticks = document.querySelectorAll('.progress-bar-tick');
             const activeCount = Math.floor(progress * ticks.length);
             ticks.forEach((t, i) => { t.classList.toggle('active', i < activeCount); });
-            
             if(!currentMode.isTest && totalElapsed >= sessionDuration) { clearInterval(stepTimer); endSession(); }
         }, 1000);
 
