@@ -101,7 +101,7 @@
         .chart-subtitle { font-size: 0.7rem; font-weight: 300; color: var(--teal); }
         .bar-chart { display: flex; justify-content: space-between; align-items: flex-end; height: 150px; padding-top: 20px; }
         .bar-group { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1; }
-        .bar { width: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; transition: height 0.5s ease; }
+        .bar { width: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; transition: height 0.6s cubic-bezier(0.33, 1, 0.68, 1); }
         .bar.active { background: var(--teal); box-shadow: 0 0 15px var(--teal); }
         .bar-label { font-size: 0.6rem; color: rgba(255,255,255,0.6); font-weight: 300; }
 
@@ -231,23 +231,6 @@
         navigator.serviceWorker.register('sw.js');
     }
 
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        document.getElementById('install-row').style.display = 'block';
-    });
-
-    async function installApp() {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            document.getElementById('install-row').style.display = 'none';
-        }
-        deferredPrompt = null;
-    }
-
     let stats = JSON.parse(localStorage.getItem('aura_stats')) || { streak: 0, lastDate: null, totalSessions: 0, userName: null, history: [], dailyMinutes: {}, restingBPM: 60, isPro: false };
     let sessionDuration = 30, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
@@ -368,7 +351,6 @@
                 initProgressBars();
                 document.getElementById('game-ui').classList.add('active');
                 
-                // Countdown Logic 3-2-1
                 const instr = document.getElementById('instruction');
                 const subInstr = document.getElementById('sub-instruction');
                 subInstr.innerText = "Prepare";
@@ -378,6 +360,7 @@
                     await new Promise(r => setTimeout(r, 1000));
                 }
                 
+                if (currentID !== activeSessionID) return;
                 sessionStartTime = Date.now();
                 setupAudio(currentMode.freq); 
                 runSequence(0, currentID);
@@ -386,13 +369,15 @@
     }
 
     function endSession() {
-        activeSessionID++; if(audioCtx) { audioCtx.close(); audioCtx = null; }
+        isGaming = false;
+        activeSessionID++; 
+        if(audioCtx) { audioCtx.close(); audioCtx = null; }
         const todayStr = new Date().toDateString();
         if (stats.lastDate !== todayStr) { const yesterday = new Date(Date.now() - 86400000).toDateString(); stats.streak = (stats.lastDate === yesterday) ? stats.streak + 1 : 1; stats.lastDate = todayStr; if(!stats.history.includes(todayStr)) stats.history.push(todayStr); }
         stats.totalSessions++; 
         stats.dailyMinutes[todayStr] = (stats.dailyMinutes[todayStr] || 0) + Math.ceil(sessionDuration / 60);
         localStorage.setItem('aura_stats', JSON.stringify(stats));
-        isGaming = false; document.getElementById('game-ui').classList.remove('active');
+        document.getElementById('game-ui').classList.remove('active');
         const avgBpm = Math.round(bpmHistory.reduce((a,b)=>a+b,0) / bpmHistory.length) || stats.restingBPM;
         document.getElementById('summary-streak').innerText = `${stats.streak} day streak`; document.getElementById('summary-bpm').innerText = `${avgBpm} bpm`;
         document.getElementById('summary-overlay').classList.add('active');
@@ -406,7 +391,7 @@
         document.getElementById('instruction').innerText = step.a; targetSize = step.s; targetBPM = step.b;
         let remaining = step.t / 1000; document.getElementById('sub-instruction').innerText = remaining + "s";
         const stepTimer = setInterval(() => {
-            if (sessionID !== activeSessionID) { clearInterval(stepTimer); return; }
+            if (sessionID !== activeSessionID || !isGaming) { clearInterval(stepTimer); return; }
             remaining--; if (remaining > 0) document.getElementById('sub-instruction').innerText = remaining + "s";
             const totalElapsed = (Date.now() - sessionStartTime) / 1000;
             const sessionLeft = Math.max(0, Math.ceil(sessionDuration - totalElapsed));
@@ -420,9 +405,13 @@
                 else t.classList.remove('active');
             });
 
-            if(totalElapsed >= sessionDuration) endSession();
+            if(totalElapsed >= sessionDuration) {
+                clearInterval(stepTimer);
+                endSession();
+            }
         }, 1000);
-        await new Promise(r => setTimeout(r, step.t)); clearInterval(stepTimer);
+        await new Promise(r => setTimeout(r, step.t)); 
+        clearInterval(stepTimer);
         if(isGaming && sessionID === activeSessionID) runSequence(index + 1, sessionID);
     }
 
@@ -456,10 +445,12 @@
         document.getElementById('weekly-total').innerText = `${weeklyTotal} min total`;
 
         weeklyData.forEach(data => {
-            const heightPercentage = maxMinutes > 0 ? (data.minutes / maxMinutes) * 100 : 0;
+            // If there is no activity yet, show placeholder height
+            const placeholderHeight = 12; 
+            const heightPercentage = maxMinutes > 0 ? (data.minutes / maxMinutes) * 100 : placeholderHeight;
             chart.innerHTML += `
                 <div class="bar-group">
-                    <div class="bar ${data.minutes > 0 ? 'active' : ''}" style="height: ${Math.max(heightPercentage, 2)}%"></div>
+                    <div class="bar ${data.minutes > 0 ? 'active' : ''}" style="height: ${Math.max(heightPercentage, 4)}%"></div>
                     <div class="bar-label">${data.day}</div>
                 </div>`;
         });
@@ -471,6 +462,7 @@
     window.addEventListener('resize', resize); resize();
 
     function drawECG(cX) {
+        if (!isGaming) return;
         const boxWidth = Math.min(width * 0.85, 340); const boxHeight = 70; const safeBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 20;
         const boxY = height - (boxHeight + 30 + safeBottom); const boxX = cX - (boxWidth / 2);
         const ecgAreaWidth = boxWidth * 0.7; const bpmAreaWidth = boxWidth * 0.3; const baselineY = boxY + (boxHeight / 2) + 5;
