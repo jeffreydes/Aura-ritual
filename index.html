@@ -619,8 +619,17 @@
         ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(boxX + ecgAreaWidth, boxY, bpmAreaWidth, boxHeight);
         ctx.fillStyle = '#ffffff'; ctx.font = '100 1.2rem Inter'; ctx.textAlign = 'center'; ctx.fillText(Math.round(bpm), boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 38);
         ctx.font = '300 0.5rem Inter'; ctx.globalAlpha = 0.4; ctx.fillText('BPM', boxX + ecgAreaWidth + (bpmAreaWidth/2), boxY + 52); ctx.globalAlpha = 1;
-        bpm += (targetBPM - bpm) * 0.01; const beatNow = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
-        if(isGaming && sessionStartTime > 0) bpmHistory.push(bpm);
+        
+        // REFINED BPM LOGIC: Slower, organic drift to prevent jitter
+        bpm += (targetBPM - bpm) * 0.006; 
+        
+        const beatNow = Date.now(); const beatInterval = 60000 / bpm; ecgX += (bpm / 60) * 2.2; if (ecgX > ecgAreaWidth) ecgX = 0;
+        
+        // Throttle history logging to once per second for performance stability
+        if(isGaming && sessionStartTime > 0 && Math.floor(beatNow / 1000) !== Math.floor((beatNow - 16) / 1000)) {
+            bpmHistory.push(bpm);
+        }
+
         let yOffset = 0; let t = beatNow - lastBeatTime; if (t > beatInterval) { lastBeatTime = beatNow; }
         if (t < 100) yOffset = -Math.sin((t/100) * Math.PI) * 4; else if (t < 175) yOffset = 4; else if (t < 200) yOffset = -35; else if (t < 225) yOffset = 8; else if (t < 400) yOffset = -Math.sin(((t-225)/175) * Math.PI) * 6;
         ecgPoints.push({x: ecgX, y: baselineY + yOffset}); if (ecgPoints.length > 90) ecgPoints.shift();
