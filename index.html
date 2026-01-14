@@ -35,6 +35,7 @@
 
         canvas { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; width: 100%; height: 100%; }
 
+        /* Overlays */
         .overlay {
             position: fixed; inset: 0; z-index: 1500; background: rgba(1, 6, 11, 0.92);
             backdrop-filter: blur(40px); display: flex; flex-direction: column;
@@ -57,19 +58,15 @@
         .comp-label { font-size: 0.55rem; text-transform: uppercase; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-bottom: 5px; display: block; }
         .comp-val { font-size: 1.1rem; font-weight: 200; color: #fff; }
 
+        /* Premium Badge */
         .pro-badge-main { background: var(--gold); color: #000; font-size: 0.5rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
-        .mode-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         
+        .mode-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         .m-icon { width: 14px; height: 14px; border: 1px solid #fff; flex-shrink: 0; opacity: 0.8; }
         .m-icon.rect { border-radius: 0; }
         .m-icon.oval { width: 20px; height: 10px; border-radius: 10px; }
         .m-icon.circle { border-radius: 50%; }
         .m-icon.diamond { width: 12px; height: 12px; transform: rotate(45deg); }
-
-        .pro-lock-tag { font-size: 0.5rem; letter-spacing: 1px; font-weight: 500; color: var(--gold); border: 1px solid var(--gold); padding: 3px 7px; border-radius: 12px; opacity: 0; transition: 0.3s; margin-left: auto; }
-        .mode-card.locked { opacity: 0.5; filter: grayscale(0.2); }
-        .mode-card.locked .pro-lock-tag { opacity: 0.9; }
-        body.is-pro .pro-lock-tag { display: none !important; }
 
         #intro-overlay {
             position: fixed; inset: 0; z-index: 1000; background: var(--bg);
@@ -198,10 +195,6 @@
                 </div>
             </div>
             
-            <div id="pro-unlock-section">
-                <button id="buy-pro-btn" class="btn-minimal" style="border-color: var(--gold); color: var(--gold); margin-bottom: 15px;" onclick="purchasePro()">Upgrade to Pro (2.99€)</button>
-            </div>
-
             <button class="btn-minimal" style="width: 100%;" onclick="calibrateBPM()">Calibrate BPM</button>
             
             <div id="install-row">
@@ -260,17 +253,15 @@
                     <div class="mode-header">
                         <div class="m-icon oval"></div>
                         <b>RELAXATION BREATH</b>
-                        <span class="pro-lock-tag">PRO</span>
                     </div>
-                    <span>4-7-8. Calm your autonomic nervous system.</span>
+                    <span>4-7-8. Calm your autonomic nervous system. Unlocked in Full Version.</span>
                 </button>
                 <button class="mode-card" id="mode-steady" onclick="startMode('steady')">
                     <div class="mode-header">
                         <div class="m-icon circle"></div>
                         <b>COHERENCE BREATH</b>
-                        <span class="pro-lock-tag">PRO</span>
                     </div>
-                    <span>5-5. Harmonize your heart and mind.</span>
+                    <span>5-5. Harmonize your heart and mind. Unlocked in Full Version.</span>
                 </button>
                 <button class="mode-card" onclick="startMode('hold_test')">
                     <div class="mode-header">
@@ -321,7 +312,7 @@
         userName: null, 
         history: [], 
         restingBPM: 60, 
-        isPro: false, 
+        isPro: true, // ALWAYS TRUE FOR FULL VERSION
         dailyMinutes: {}, 
         bestStreak: 0, 
         holdHistory: [], 
@@ -329,6 +320,9 @@
         reminderEnabled: false,
         reminderTime: "08:00"
     };
+
+    // Force pro state regardless of previous storage
+    stats.isPro = true;
 
     let sessionDuration = 60, chosenDuration = 60, sessionStartTime = 0, bpmHistory = [];
     let activeSessionID = 0, isGaming = false, currentMode = null, orbSize = 70, targetSize = 70, audioCtx = null;
@@ -342,7 +336,7 @@
         initRemindersUI();
         if (stats.userName) {
             document.getElementById('name-input-container').style.display = 'none';
-            playIntro(`Welcome back, ${stats.userName}`, "", 3000, () => {
+            playIntro(`Welcome back, ${stats.userName}`, "Come to to rest with Aura.", 3000, () => {
                 document.getElementById('dashboard').classList.add('active');
                 renderDashboard();
                 renderProUI();
@@ -366,7 +360,6 @@
             Notification.requestPermission().then(permission => {
                 if (permission !== "granted") {
                     document.getElementById('reminder-toggle').checked = false;
-                    alert("Aura needs notification access to send reminders.");
                     return;
                 }
                 saveReminderSettings(true);
@@ -408,37 +401,21 @@
 
     function sendNotification(title, body) {
         if (Notification.permission === "granted") {
-            new Notification(title, { body: body, icon: '/icon.png' });
+            new Notification(title, { body: body });
         }
     }
 
     function setDuration(sec, btn) {
-        if(!stats.isPro && sec > 60) { alert("Aura Pro required for sessions longer than 1m."); toggleProgress(); return; }
+        // No checks needed - Full Version
         chosenDuration = sec;
         sessionDuration = sec;
         document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
-    function purchasePro() {
-        if(confirm("Simulate purchase of Aura Pro for 2.99€?")) {
-            stats.isPro = true; localStorage.setItem('aura_stats', JSON.stringify(stats));
-            renderProUI(); renderDashboard(); alert("Aura Pro Unlocked.");
-        }
-    }
-
     function renderProUI() {
-        if(stats.isPro) {
-            document.body.classList.add('is-pro');
-            const proBtn = document.getElementById('buy-pro-btn');
-            if(proBtn) proBtn.style.display = "none";
-            document.getElementById('display-name').innerHTML = `${stats.userName}<span class="pro-badge-main">PRO</span>`;
-            document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('locked'));
-        } else {
-            document.body.classList.remove('is-pro');
-            document.getElementById('mode-relax').classList.add('locked');
-            document.getElementById('mode-steady').classList.add('locked');
-        }
+        // Force the Pro Badge and Unlocks
+        document.getElementById('display-name').innerHTML = `${stats.userName}<span class="pro-badge-main">GOLD</span>`;
     }
 
     function toggleProgress() {
@@ -502,8 +479,6 @@
     }
 
     function startMode(modeKey) {
-        const premiumModes = ['relax', 'steady'];
-        if(!stats.isPro && premiumModes.includes(modeKey)) { alert("Aura Pro required for this mode."); toggleProgress(); return; }
         const modes = {
             box: { title: "BOX BREATH", explainer: "Resetting rhythms.", sequence: [{a:'Inhale',t:4000,s:180,b:85},{a:'Hold',t:4000,s:180,b:65},{a:'Exhale',t:4000,s:80,b:50},{a:'Hold',t:4000,s:80,b:65}], color: '#38bdf8', freq: 432 },
             relax: { title: "RELAXATION BREATH", explainer: "Extending the exhale.", sequence: [{a:'Inhale',t:4000,s:180,b:80},{a:'Hold',t:7000,s:180,b:60},{a:'Exhale',t:8000,s:80,b:45}], color: '#a78bfa', freq: 528 },
@@ -601,7 +576,7 @@
     function renderDashboard() {
         document.getElementById('streak-count').innerText = stats.streak; 
         document.getElementById('total-sessions').innerText = `${stats.totalSessions} sessions`; 
-        document.getElementById('display-name').innerHTML = stats.isPro ? `${stats.userName}<span class="pro-badge-main">PRO</span>` : stats.userName;
+        document.getElementById('display-name').innerHTML = `${stats.userName}<span class="pro-badge-main">GOLD</span>`;
         const track = document.getElementById('week-track'); track.innerHTML = '';
         const dayLabels = ['S','M','T','W','T','F','S'];
         const todayIdx = new Date().getDay();
