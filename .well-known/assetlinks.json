@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.jeffreydes.auraritual",
+        "sha256_cert_fingerprints": ["8B:32:28:9F:F1:70:6A:62:3D:F3:E6:E6:F3:CA:CF:26:C9:25:10:73:22:D8:0D:88:49:22:2F:30:CD:1E:7F:35"]
+      }
+    }]
